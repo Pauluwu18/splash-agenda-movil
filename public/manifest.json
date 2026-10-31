@@ -1,0 +1,22 @@
+{
+  "name": "SPLASH Agenda Mobile",
+  "short_name": "SPLASH Agenda",
+  "description": "Gestión de Servicios y Agenda Móvil de SPLASH",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0A0E11",
+  "theme_color": "#0A0E11",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "./icons.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
