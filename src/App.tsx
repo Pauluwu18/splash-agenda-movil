@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/ui/Header';
 import { BottomNav, NavigationTab } from './components/ui/BottomNav';
 import { AgendaView } from './modules/agenda/AgendaView';
@@ -8,6 +8,7 @@ import { ServicesCatalogView } from './modules/catalog/ServicesCatalogView';
 import { SettingsView } from './modules/settings/SettingsView';
 import { WhatsAppSummary } from './modules/services/WhatsAppSummary';
 import { EditServiceModal } from './modules/services/EditServiceModal';
+import { LoginView } from './modules/auth/LoginView';
 import { ServicioAgenda } from './types';
 
 export default function App() {
@@ -16,6 +17,50 @@ export default function App() {
   const [editingService, setEditingService] = useState<ServicioAgenda | null>(null);
   const [toast, setToast] = useState<string>('');
   const [refreshKey, setRefreshKey] = useState<number>(0);
+
+  // Estado de Tema: 'dark' u 'light'
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      const saved = localStorage.getItem('sumaq_theme');
+      return (saved === 'light' || saved === 'dark') ? saved : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  // Estado de Autenticación
+  const [currentUser, setCurrentUser] = useState<{ username: string; role: string } | null>(() => {
+    try {
+      const saved = localStorage.getItem('sumaq_auth_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Sincronizar clase en HTML para modo claro / oscuro
+  useEffect(() => {
+    try {
+      localStorage.setItem('sumaq_theme', theme);
+      if (theme === 'light') {
+        document.documentElement.classList.add('light');
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+      }
+    } catch (_) {}
+  }, [theme]);
+
+  const handleToggleTheme = () => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('sumaq_auth_user');
+    setCurrentUser(null);
+    showNotification('👋 Sesión cerrada correctamente');
+  };
 
   const showNotification = (msg: string) => {
     setToast(msg);
@@ -34,17 +79,36 @@ export default function App() {
     }
   };
 
+  // Si no está autenticado, mostrar la vista de Login idéntica a captura del usuario
+  if (!currentUser) {
+    return (
+      <LoginView
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          showNotification(`¡Bienvenido, ${user.username}!`);
+        }}
+      />
+    );
+  }
+
+  const isLight = theme === 'light';
+
   return (
-    <div className="min-h-screen bg-[#0A0E11] text-[#F0F4F8] flex justify-center selection:bg-[#00CED1] selection:text-slate-950 w-full overflow-x-hidden">
-      <div className="w-full max-w-full lg:max-w-6xl xl:max-w-7xl min-h-screen flex flex-col relative bg-[#0A0E11] shadow-2xl lg:border-x lg:border-[#1E2530]">
+    <div className={`min-h-screen ${isLight ? 'light-mode bg-[#F1F5F9] text-slate-900' : 'bg-[#0A0E11] text-[#F0F4F8]'} flex justify-center selection:bg-[#00CED1] selection:text-slate-950 w-full overflow-x-hidden transition-colors`}>
+      <div className={`w-full max-w-full lg:max-w-6xl xl:max-w-7xl min-h-screen flex flex-col relative ${isLight ? 'bg-[#F8FAFC] lg:border-x lg:border-slate-200 shadow-xl' : 'bg-[#0A0E11] lg:border-x lg:border-[#1E2530] shadow-2xl'}`}>
         
-        {/* Barra Superior SUMAQ */}
+        {/* Barra Superior SUMAQ con Logo y Menú de Perfil */}
         <Header
           onRefresh={() => {
             setRefreshKey(prev => prev + 1);
-            showNotification('🔄 Agenda actualizada');
+            showNotification('🔄 Agenda sincronizada');
           }}
           onOpenSettings={() => setActiveTab('ajustes')}
+          theme={theme}
+          onToggleTheme={handleToggleTheme}
+          onLogout={handleLogout}
+          username={currentUser.username}
+          role={currentUser.role}
         />
 
         {/* Notificación Flotante Toast */}

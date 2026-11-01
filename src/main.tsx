@@ -23,8 +23,41 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    console.error('ErrorBoundary capturó un error:', error, errorInfo);
+
+    // Si es un error de carga de chunk desactualizado por nueva versión, auto-recuperar inmediatamente
+    const msg = error?.message || '';
+    if (
+      msg.includes('dynamically imported module') ||
+      msg.includes('Failed to fetch') ||
+      msg.includes('Loading chunk') ||
+      msg.includes('text/html')
+    ) {
+      this.handleLimpiarYRecargar(true);
+    }
   }
+
+  handleLimpiarYRecargar = async (silencioso = false) => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) {
+          await reg.unregister();
+        }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+      localStorage.removeItem('splash_last_sync_time');
+      localStorage.removeItem('sumaq_last_sync_time');
+      sessionStorage.clear();
+    } catch (_) {}
+
+    // Hard reload forzando bypass de caché del navegador
+    const cleanUrl = window.location.origin + window.location.pathname + '?v=' + Date.now();
+    window.location.href = cleanUrl;
+  };
 
   render() {
     if (this.state.hasError) {
@@ -36,17 +69,16 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             </div>
             <h2 className="text-base font-extrabold text-[#F0F4F8]">Aviso de Recuperación del Sistema</h2>
             <p className="text-xs text-[#8A9BB0]">
-              La aplicación detectó una versión desactualizada en caché. Presiona el botón para limpiar y recargar la última versión.
+              La aplicación detectó una actualización en el sistema. Presiona el botón para sincronizar la versión más reciente.
             </p>
+            {this.state.error?.message && (
+              <p className="text-[10px] text-rose-400/80 bg-rose-950/30 p-2 rounded-lg font-mono text-left max-h-20 overflow-auto">
+                {this.state.error.message}
+              </p>
+            )}
             <button
-              onClick={() => {
-                if ('caches' in window) {
-                  caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))));
-                }
-                localStorage.removeItem('splash_last_sync_time');
-                window.location.reload();
-              }}
-              className="w-full py-2.5 px-4 bg-[#00CED1] hover:brightness-110 active:scale-98 text-slate-950 font-black text-xs rounded-xl transition"
+              onClick={() => this.handleLimpiarYRecargar(false)}
+              className="w-full py-2.5 px-4 bg-[#00CED1] hover:brightness-110 active:scale-98 text-slate-950 font-black text-xs rounded-xl transition cursor-pointer shadow-lg shadow-[#00CED1]/20"
             >
               🔄 Limpiar Caché y Recargar SUMAQ
             </button>
@@ -66,7 +98,7 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>
 );
 
-// Registrar o actualizar Service Worker
+// Registrar Service Worker con actualización activa
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').then((reg) => {

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  /* Paleta Oficial SPLASH */
+  /* Paleta Oficial SUMAQ - Modo Oscuro */
   --bg-app: #0A0E11;
   --bg-sidebar: #111418;
   --bg-surface: #181D22;
@@ -43,13 +43,14 @@ body {
   overscroll-behavior-y: none;
   margin: 0;
   padding: 0;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 input, textarea, select {
   user-select: auto;
 }
 
-/* Scrollbars discretos para móvil */
+/* Scrollbars discretos para móvil y desktop */
 ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
@@ -64,4 +65,99 @@ input, textarea, select {
 
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+/* =========================================================================
+   SOPORTE COMPLETO DE MODO CLARO (LIGHT THEME)
+   ========================================================================= */
+html.light body,
+.light-mode {
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
+}
+
+/* Fondos principales en modo claro */
+.light-mode .bg-\[\#0A0E11\],
+.light-mode .bg-\[\#0A0E11\]\/95 {
+  background-color: rgba(248, 250, 252, 0.95) !important;
+}
+
+.light-mode .bg-\[\#13171C\] {
+  background-color: #FFFFFF !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+}
+
+.light-mode .hover\:bg-\[\#181D23\]:hover {
+  background-color: #F8FAFC !important;
+}
+
+.light-mode .bg-\[\#181D22\] {
+  background-color: #F8FAFC !important;
+}
+
+.light-mode .hover\:bg-\[\#252D38\]:hover,
+.light-mode .hover\:bg-\[\#232B36\]:hover,
+.light-mode .hover\:bg-\[\#222A36\]:hover {
+  background-color: #E2E8F0 !important;
+}
+
+.light-mode .bg-\[\#0E1216\] {
+  background-color: #E2E8F0 !important;
+}
+
+.light-mode .bg-\[\#1E2530\],
+.light-mode .bg-\[\#1E2530\]\/95 {
+  background-color: #E2E8F0 !important;
+}
+
+.light-mode .bg-\[\#111418\] {
+  background-color: #F1F5F9 !important;
+}
+
+/* Bordes en modo claro */
+.light-mode .border-\[\#232B36\],
+.light-mode .border-\[\#252D38\],
+.light-mode .border-\[\#2E3847\],
+.light-mode .border-\[\#1E2530\] {
+  border-color: #E2E8F0 !important;
+}
+
+/* Tipografía de alto contraste en modo claro */
+.light-mode .text-\[\#F0F4F8\] {
+  color: #0F172A !important;
+}
+
+.light-mode .text-\[\#E2E8F0\] {
+  color: #1E293B !important;
+}
+
+.light-mode .text-\[\#8A9BB0\] {
+  color: #475569 !important;
+}
+
+.light-mode .text-\[\#A0AEC0\] {
+  color: #334155 !important;
+}
+
+.light-mode .text-\[\#4A5A70\] {
+  color: #64748B !important;
+}
+
+/* Controles de formulario en modo claro */
+.light-mode input:not([type="checkbox"]):not([type="radio"]),
+.light-mode select {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+
+.light-mode input::placeholder {
+  color: #94A3B8 !important;
+}
+
+/* Dropdown popover en modo claro */
+.light-mode .admin-popover {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
 }
