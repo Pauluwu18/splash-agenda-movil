@@ -41,6 +41,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
   // Estado para Drag and Drop
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const cargarDatos = async (fechaActual = fecha, silencioso = false) => {
     if (!silencioso) setCargando(true);
@@ -106,24 +107,17 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
     );
   });
 
-  // Funciones de Drag & Drop (reordenar con mouse o dedo)
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === dropIndex) return;
+  // Reordenar servicios (soporta tanto PC como Pantallas Táctiles / Android)
+  const handleReorder = async (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
 
     const list = [...serviciosFiltrados];
-    const [moved] = list.splice(draggedIndex, 1);
-    list.splice(dropIndex, 0, moved);
+    const [moved] = list.splice(fromIndex, 1);
+    list.splice(toIndex, 0, moved);
 
     // Asignar nuevo orden numérico
     list.forEach((item, idx) => {
@@ -134,13 +128,67 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
     const otrosServicios = servicios.filter(s => s.horario !== filtroTurno);
     setServicios([...otrosServicios, ...list]);
     setDraggedIndex(null);
+    setDragOverIndex(null);
 
-    // Persistir orden
+    // Persistir orden en Supabase y notificar en tiempo real
     await reorderServicios(list);
+  };
+
+  // Drag & Drop para PC / Mouse
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(index));
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move';
+    }
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    const sourceIndex = draggedIndex;
+    if (sourceIndex !== null && sourceIndex !== dropIndex) {
+      await handleReorder(sourceIndex, dropIndex);
+    } else {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+    }
   };
 
   const handleDragEnd = () => {
     setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  // Drag & Drop Táctil para Móviles (Android / iOS)
+  const handleTouchDragStart = (index: number) => {
+    setDraggedIndex(index);
+    setDragOverIndex(index);
+  };
+
+  const handleTouchDragOver = (targetIndex: number) => {
+    if (dragOverIndex !== targetIndex) {
+      setDragOverIndex(targetIndex);
+    }
+  };
+
+  const handleTouchDragEnd = async () => {
+    const sourceIndex = draggedIndex;
+    const targetIndex = dragOverIndex;
+    if (sourceIndex !== null && targetIndex !== null && sourceIndex !== targetIndex) {
+      await handleReorder(sourceIndex, targetIndex);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const totalRecaudadoTurno = serviciosFiltrados
@@ -326,6 +374,10 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                 onDrop={handleDrop}
                 onDragEnd={handleDragEnd}
                 isDragging={draggedIndex === idx}
+                onTouchDragStart={handleTouchDragStart}
+                onTouchDragOver={handleTouchDragOver}
+                onTouchDragEnd={handleTouchDragEnd}
+                isDragOverTarget={dragOverIndex === idx && draggedIndex !== null && draggedIndex !== idx}
               />
             ))
           )}

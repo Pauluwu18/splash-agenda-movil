@@ -1,6 +1,6 @@
 import { 
   ServicioAgenda, Cliente, Empresa, CanalOrigen, 
-  CategoriaCatalogo, Vehiculo, TurnoHorario, EstadoServicio 
+  CategoriaCatalogo, Vehiculo, TurnoHorario, EstadoServicio, Operario 
 } from '../../types';
 import { getMainSupabase, isMainSupabaseConfigured } from './client';
 import { fetchOperarios } from '../supabase-operators/operators';
@@ -48,8 +48,8 @@ export const CATALOGO_DEFAULT: CategoriaCatalogo[] = [
       { id: 'sub-banqueta', categoria_id: 'cat-muebles', nombre: 'Banqueta', tipo_medida: 'unidad', precio_sugerido: 40.0 },
       { id: 'sub-puff', categoria_id: 'cat-muebles', nombre: 'Puff', tipo_medida: 'unidad', precio_sugerido: 25.0 },
       { id: 'sub-sillas-6', categoria_id: 'cat-muebles', nombre: '6 Sillas de Comedor', tipo_medida: 'unidad', precio_sugerido: 90.0 },
-      { id: 'sub-sillas-4', categoria_id: 'cat-muebles', nombre: '4 Sillas de Comedor', tipo_medida: 'unidad', precio_sugerido: 60.0 },
-      { id: 'sub-silla-unid', categoria_id: 'cat-muebles', nombre: 'Silla (unidad)', tipo_medida: 'unidad', precio_sugerido: 15.0 }
+      { id: 'sub-sillas-x1', categoria_id: 'cat-muebles', nombre: 'Silla de Comedor (unidad)', tipo_medida: 'unidad', precio_sugerido: 15.0 },
+      { id: 'sub-silla-gamer', categoria_id: 'cat-muebles', nombre: 'Silla Gamer / Oficina', tipo_medida: 'unidad', precio_sugerido: 40.0 }
     ]
   },
   {
@@ -100,7 +100,9 @@ export const DISTRITOS_LIMA = [
   'Independencia', 'San Juan de Miraflores', 'Bellavista', 'La Perla', 'Otro'
 ];
 
-// Gestión de Catálogo Dinámico en Local y Cloud
+// =========================================================================
+// GESTIÓN DE CATÁLOGO PERSONALIZADO
+// =========================================================================
 export const getCatalogoPersonalizado = (): CategoriaCatalogo[] => {
   try {
     const raw = localStorage.getItem('sumaq_catalogo_servicios');
@@ -137,9 +139,17 @@ export const addServicioToCatalog = (categoriaNombre: string, subcategoriaNombre
   return cats;
 };
 
+export const deleteServicioFromCatalog = (subcategoriaId: string) => {
+  const cats = getCatalogoPersonalizado();
+  for (const cat of cats) {
+    cat.subcategorias = cat.subcategorias.filter(s => s.id !== subcategoriaId);
+  }
+  saveCatalogoPersonalizado(cats);
+  return cats;
+};
 
 // =========================================================================
-// GESTIÓN DE VANS PERSONALIZADAS EN LOCAL Y SUPABASE
+// GESTIÓN DE VANS PERSONALIZADAS
 // =========================================================================
 export const getVansPersonalizadas = (): Vehiculo[] => {
   try {
@@ -155,9 +165,7 @@ export const getVansPersonalizadas = (): Vehiculo[] => {
 export const saveVansPersonalizadas = (vans: Vehiculo[]) => {
   try {
     localStorage.setItem('sumaq_vans_personalizadas', JSON.stringify(vans));
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('sumaq_servicios_changed', { detail: { time: Date.now() } }));
-    }
+    notifyServiciosChange();
   } catch {}
 };
 
@@ -184,13 +192,45 @@ export const deleteVanFromFlota = (vanId: string): Vehiculo[] => {
   return vans;
 };
 
-export const deleteServicioFromCatalog = (subcategoriaId: string) => {
-  const cats = getCatalogoPersonalizado();
-  for (const cat of cats) {
-    cat.subcategorias = cat.subcategorias.filter(s => s.id !== subcategoriaId);
+// =========================================================================
+// CODIFICACIÓN LIMPIA DE METADATOS (VAN Y OPERARIO EN COMENTARIOS)
+// =========================================================================
+export const encodeMetadataComentarios = (comentarios = '', vanNombre = '', operarioId = ''): string => {
+  const cleanCom = (comentarios || '')
+    .replace(/\[VAN:[^\]]*\]\s*/g, '')
+    .replace(/\[OP:[^\]]*\]\s*/g, '')
+    .trim();
+
+  const parts: string[] = [];
+  if (vanNombre) parts.push(`[VAN:${vanNombre}]`);
+  if (operarioId) parts.push(`[OP:${operarioId}]`);
+  if (cleanCom) parts.push(cleanCom);
+
+  return parts.join(' ').trim();
+};
+
+export const decodeMetadataComentarios = (comentarios = '') => {
+  let vanNombre = '';
+  let operarioId = '';
+  let clean = comentarios || '';
+
+  const vanMatch = clean.match(/\[VAN:([^\]]+)\]/);
+  if (vanMatch) {
+    vanNombre = vanMatch[1].trim();
+    clean = clean.replace(/\[VAN:[^\]]*\]\s*/g, '');
   }
-  saveCatalogoPersonalizado(cats);
-  return cats;
+
+  const opMatch = clean.match(/\[OP:([^\]]+)\]/);
+  if (opMatch) {
+    operarioId = opMatch[1].trim();
+    clean = clean.replace(/\[OP:[^\]]*\]\s*/g, '');
+  }
+
+  return {
+    vanNombre,
+    operarioId,
+    comentarios: clean.trim()
+  };
 };
 
 // Fallback local store
@@ -208,7 +248,7 @@ const setLocalServices = (list: ServicioAgenda[]) => {
 };
 
 // =========================================================================
-// CONSULTA DE AGENDAS POR FECHA
+// CONSULTA DE AGENDAS POR FECHA (SUPABASE DIRECTO)
 // =========================================================================
 export const fetchServiciosPorFecha = async (fechaStr: string): Promise<ServicioAgenda[]> => {
   const supa = getMainSupabase();
@@ -224,19 +264,33 @@ export const fetchServiciosPorFecha = async (fechaStr: string): Promise<Servicio
         .order('created_at', { ascending: true });
 
       if (!error && data) {
-        const mapped = data.map((item: any) => {
-          const opIds: string[] = item.operario_ids || (item.operario_id ? [item.operario_id] : []);
+        const mapped: ServicioAgenda[] = data.map((item: any) => {
+          const { vanNombre: decVan, operarioId: decOp, comentarios: cleanCom } = decodeMetadataComentarios(item.comentarios);
+          const vanNombre = decVan || (item.es_taxi ? 'TAXI 1' : 'Sin movilidad');
+          const opIds = decOp ? [decOp] : [];
           const operariosAsignados = allOperators.filter(o => opIds.includes(o.id));
 
           return {
             ...item,
+            van_nombre: vanNombre,
             operario_ids: opIds,
             operarios: operariosAsignados,
-            items: item.items || []
+            comentarios: cleanCom,
+            link_maps: (item.referencia && item.referencia.startsWith('http')) ? item.referencia : '',
+            empresa_nombre: 'SUMAQ',
+            items: item.items || [{
+              subcategoria_nombre: item.servicio_detalle,
+              subcategoria_id: 'sub-main',
+              categoria_id: 'cat-main',
+              categoria_nombre: 'Servicio',
+              precio: item.precio_final,
+              tipo_medida: 'unidad',
+              valor_editable: 1
+            }]
           };
         });
 
-        // Guardar en cache local para disponibilidad offline inmediata
+        // Actualizar cache local para disponibilidad offline
         try {
           const local = getLocalServices();
           const filtered = local.filter(s => s.fecha !== fechaStr);
@@ -263,7 +317,7 @@ export const fetchServiciosPorFecha = async (fechaStr: string): Promise<Servicio
 };
 
 // =========================================================================
-// BÚSQUEDA DE CLIENTE POR TELÉFONO (CRM EN TIEMPO REAL)
+// BÚSQUEDA DE CLIENTE POR TELÉFONO
 // =========================================================================
 export const buscarClientePorTelefono = async (telefono: string): Promise<Cliente | null> => {
   const clean = telefono.replace(/\D/g, '');
@@ -304,91 +358,100 @@ export const saveServicioAgenda = async (
       nombre: servicioData.cliente_nombre,
       telefono: servicioData.telefono,
       distrito: servicioData.distrito,
-      direccion: servicioData.direccion,
-      empresa_id: servicioData.empresa_id
+      direccion: servicioData.direccion
     });
   }
 
   const supa = getMainSupabase();
-  const payloadToSave = {
-    cliente_nombre: servicioData.cliente_nombre,
-    telefono: servicioData.telefono,
-    distrito: servicioData.distrito,
-    direccion: servicioData.direccion,
-    referencia: servicioData.referencia || '',
-    link_maps: servicioData.link_maps || '',
+  const van = servicioData.van_nombre || (servicioData.es_taxi ? 'TAXI 1' : 'Sin movilidad');
+  const opId = operarioIds[0] || servicioData.operario_id || '';
+  const comentariosEncoded = encodeMetadataComentarios(servicioData.comentarios, van, opId);
+
+  // Columnas exactas de la tabla servicios_agenda en Supabase
+  const dbPayload = {
+    cliente_nombre: servicioData.cliente_nombre?.trim(),
+    telefono: servicioData.telefono?.trim(),
+    distrito: servicioData.distrito?.trim(),
+    direccion: servicioData.direccion?.trim(),
+    referencia: servicioData.link_maps || servicioData.referencia || '',
     fecha: servicioData.fecha,
     horario: servicioData.horario,
     hora_estimada: servicioData.hora_estimada || '',
     servicio_detalle: servicioData.servicio_detalle,
-    items: servicioData.items || [],
     precio_final: Number(servicioData.precio_final) || 0,
-    descuento: Number(servicioData.descuento) || 0,
     monto_extra: Number(servicioData.monto_extra) || 0,
-    metodo_pago: servicioData.metodo_pago || 'Efectivo',
-    comentarios: servicioData.comentarios || '',
+    metodo_pago: servicioData.metodo_pago || 'Yape / Plin',
+    comentarios: comentariosEncoded,
     estado: servicioData.estado || 'PENDIENTE',
-    es_taxi: Boolean(servicioData.es_taxi),
-    es_rectificacion: Boolean(servicioData.es_rectificacion),
-    sucursal_nombre: servicioData.sucursal_nombre || 'Las Flores',
-    vehiculo_id: servicioData.vehiculo_id || null,
-    van_nombre: servicioData.van_nombre || 'TAXI 1',
-    empresa_id: servicioData.empresa_id || null,
-    empresa_nombre: servicioData.empresa_nombre || 'SUMAQ',
-    empresa_color: servicioData.empresa_color || '#00CED1',
-    canal_origen_id: servicioData.canal_origen_id || null,
-    operario_id: operarioIds[0] || null,
-    operario_ids: operarioIds,
+    es_taxi: Boolean(servicioData.es_taxi || van.toUpperCase().includes('TAXI')),
     orden: Number(servicioData.orden) || 0
   };
+
+  let savedRecord: ServicioAgenda | null = null;
 
   if (supa) {
     try {
       if (servicioData.id && !servicioData.id.startsWith('srv-')) {
         const { data, error } = await supa
           .from('servicios_agenda')
-          .update(payloadToSave)
+          .update(dbPayload)
           .eq('id', servicioData.id)
           .select()
           .single();
+
         if (!error && data) {
-          notifyServiciosChange();
-          return data;
+          savedRecord = {
+            ...servicioData,
+            ...data,
+            van_nombre: van,
+            operario_ids: operarioIds,
+            comentarios: (servicioData.comentarios || '').replace(/\[VAN:[^\]]*\]\s*/g, '').replace(/\[OP:[^\]]*\]\s*/g, '').trim()
+          } as ServicioAgenda;
         }
       } else {
         const { data, error } = await supa
           .from('servicios_agenda')
-          .insert([payloadToSave])
+          .insert([dbPayload])
           .select()
           .single();
+
         if (!error && data) {
-          notifyServiciosChange();
-          return data;
+          savedRecord = {
+            ...servicioData,
+            ...data,
+            van_nombre: van,
+            operario_ids: operarioIds,
+            comentarios: (servicioData.comentarios || '').replace(/\[VAN:[^\]]*\]\s*/g, '').replace(/\[OP:[^\]]*\]\s*/g, '').trim()
+          } as ServicioAgenda;
         }
       }
     } catch (e) {
-      console.warn('Error guardando en Supabase, guardando en local:', e);
+      console.warn('Error guardando en Supabase:', e);
     }
+  }
+
+  if (!savedRecord) {
+    const id = servicioData.id || `srv-${Date.now()}`;
+    savedRecord = {
+      ...servicioData,
+      id,
+      van_nombre: van,
+      operario_ids: operarioIds,
+      created_at: new Date().toISOString()
+    } as ServicioAgenda;
   }
 
   // Guardado Local
   const list = getLocalServices();
-  const id = servicioData.id || `srv-${Date.now()}`;
-  const record: ServicioAgenda = {
-    ...(payloadToSave as any),
-    id,
-    created_at: new Date().toISOString()
-  };
-
-  const idx = list.findIndex(s => s.id === id);
+  const idx = list.findIndex(s => s.id === savedRecord!.id);
   if (idx >= 0) {
-    list[idx] = record;
+    list[idx] = savedRecord;
   } else {
-    list.push(record);
+    list.push(savedRecord);
   }
   setLocalServices(list);
   notifyServiciosChange();
-  return record;
+  return savedRecord;
 };
 
 // =========================================================================
@@ -421,24 +484,29 @@ export const reorderServicios = async (reordered: ServicioAgenda[]): Promise<voi
 // =========================================================================
 // ACTUALIZAR ASIGNACIÓN DIRECTA DE OPERARIO DESDE LA TABLA
 // =========================================================================
-export const updateServicioOperario = async (servicioId: string, operarioId: string, operarioNombre: string): Promise<void> => {
+export const updateServicioOperario = async (
+  servicioId: string, 
+  operarioId: string, 
+  operarioNombre: string
+): Promise<void> => {
   const supa = getMainSupabase();
-  const opIds = operarioId ? [operarioId] : [];
+  const list = getLocalServices();
+  const item = list.find(s => s.id === servicioId);
+
+  const van = item?.van_nombre || (item?.es_taxi ? 'TAXI 1' : 'Sin movilidad');
+  const newComentarios = encodeMetadataComentarios(item?.comentarios, van, operarioId);
 
   if (supa && !servicioId.startsWith('srv-')) {
     try {
       await supa.from('servicios_agenda').update({
-        operario_id: operarioId || null,
-        operario_ids: opIds
+        comentarios: newComentarios
       }).eq('id', servicioId);
     } catch (e) {}
   }
 
-  const list = getLocalServices();
-  const item = list.find(s => s.id === servicioId);
   if (item) {
     item.operario_id = operarioId || undefined;
-    item.operario_ids = opIds;
+    item.operario_ids = operarioId ? [operarioId] : [];
     setLocalServices(list);
   }
   notifyServiciosChange();
@@ -450,18 +518,21 @@ export const updateServicioOperario = async (servicioId: string, operarioId: str
 export const updateServicioMovilidad = async (servicioId: string, vanNombre: string): Promise<void> => {
   const esTaxi = vanNombre.toUpperCase().includes('TAXI');
   const supa = getMainSupabase();
+  const list = getLocalServices();
+  const item = list.find(s => s.id === servicioId);
+
+  const opId = item?.operario_ids?.[0] || item?.operario_id || '';
+  const newComentarios = encodeMetadataComentarios(item?.comentarios, vanNombre, opId);
 
   if (supa && !servicioId.startsWith('srv-')) {
     try {
       await supa.from('servicios_agenda').update({
-        van_nombre: vanNombre,
-        es_taxi: esTaxi
+        es_taxi: esTaxi,
+        comentarios: newComentarios
       }).eq('id', servicioId);
     } catch (e) {}
   }
 
-  const list = getLocalServices();
-  const item = list.find(s => s.id === servicioId);
   if (item) {
     item.van_nombre = vanNombre;
     item.es_taxi = esTaxi;
@@ -501,21 +572,45 @@ export const updateServicio = async (
   updates: Partial<ServicioAgenda>
 ): Promise<void> => {
   const supa = getMainSupabase();
+  const list = getLocalServices();
+  const current = list.find(s => s.id === id);
+
+  const van = updates.van_nombre ?? current?.van_nombre ?? (updates.es_taxi ? 'TAXI 1' : 'Sin movilidad');
+  const opId = updates.operario_ids?.[0] ?? current?.operario_ids?.[0] ?? '';
+  const rawCom = updates.comentarios ?? current?.comentarios ?? '';
+  const newComentarios = encodeMetadataComentarios(rawCom, van, opId);
+
+  const dbUpdates: any = {};
+  if (updates.fecha !== undefined) dbUpdates.fecha = updates.fecha;
+  if (updates.horario !== undefined) dbUpdates.horario = updates.horario;
+  if (updates.hora_estimada !== undefined) dbUpdates.hora_estimada = updates.hora_estimada;
+  if (updates.direccion !== undefined) dbUpdates.direccion = updates.direccion;
+  if (updates.distrito !== undefined) dbUpdates.distrito = updates.distrito;
+  if (updates.link_maps !== undefined || updates.referencia !== undefined) {
+    dbUpdates.referencia = updates.link_maps || updates.referencia || '';
+  }
+  if (updates.precio_final !== undefined) dbUpdates.precio_final = Number(updates.precio_final) || 0;
+  if (updates.monto_extra !== undefined) dbUpdates.monto_extra = Number(updates.monto_extra) || 0;
+  if (updates.metodo_pago !== undefined) dbUpdates.metodo_pago = updates.metodo_pago;
+  if (updates.estado !== undefined) dbUpdates.estado = updates.estado;
+  if (updates.es_taxi !== undefined || updates.van_nombre !== undefined) {
+    dbUpdates.es_taxi = Boolean(updates.es_taxi || van.toUpperCase().includes('TAXI'));
+  }
+  dbUpdates.comentarios = newComentarios;
+
   if (supa && !id.startsWith('srv-')) {
     try {
       await supa
         .from('servicios_agenda')
-        .update(updates)
+        .update(dbUpdates)
         .eq('id', id);
     } catch (e) {
       console.warn('Error actualizando servicio en Supabase:', e);
     }
   }
 
-  const list = getLocalServices();
-  const item = list.find(s => s.id === id);
-  if (item) {
-    Object.assign(item, updates);
+  if (current) {
+    Object.assign(current, updates);
     setLocalServices(list);
   }
   notifyServiciosChange();
@@ -546,8 +641,7 @@ const saveClienteRecord = async (cliente: Partial<Cliente>) => {
           nombre: cliente.nombre,
           telefono: cliente.telefono,
           distrito: cliente.distrito,
-          direccion: cliente.direccion,
-          empresa_id: cliente.empresa_id
+          direccion: cliente.direccion
         }], { onConflict: 'telefono' });
     } catch (e) {}
   }
@@ -564,7 +658,7 @@ const saveClienteRecord = async (cliente: Partial<Cliente>) => {
 };
 
 // =========================================================================
-// SINCRONIZACIÓN EN TIEMPO REAL (PC <-> MÓVIL Y MULTIPESTAÑA)
+// SINCRONIZACIÓN EN TIEMPO REAL (SUPABASE BROADCAST + POSTGRES CHANGES)
 // =========================================================================
 let broadcastChannel: BroadcastChannel | null = null;
 try {
@@ -643,26 +737,27 @@ export const subscribeToServiciosRealtime = (onUpdate: () => void): (() => void)
   cleanups.push(() => window.removeEventListener('focus', handleFocus));
   cleanups.push(() => document.removeEventListener('visibilitychange', handleVisibility));
 
+  // Polling de respaldo cada 5 segundos cuando la app está abierta
   const intervalId = setInterval(() => {
     if (document.visibilityState === 'visible') {
       onUpdate();
     }
-  }, 6000);
+  }, 5000);
   cleanups.push(() => clearInterval(intervalId));
 
+  // Canal Supabase Global (Mismo nombre para todas las sesiones)
   const supa = getMainSupabase();
   if (supa) {
     try {
-      const channelId = `agenda_live_${Math.random().toString(36).substring(7)}`;
-      const channel = supa.channel(channelId)
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'servicios_agenda' },
-          () => onUpdate()
-        )
+      const channel = supa.channel('sumaq_realtime_broadcast')
         .on(
           'broadcast',
           { event: 'servicios_changed' },
+          () => onUpdate()
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'servicios_agenda' },
           () => onUpdate()
         )
         .subscribe();

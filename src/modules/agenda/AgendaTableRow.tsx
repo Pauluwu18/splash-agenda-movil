@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   GripVertical, Clock, Phone, MapPin, 
   Edit2, Trash2, Share2, Plus, Check, ChevronDown, Car 
@@ -24,6 +24,10 @@ interface AgendaTableRowProps {
   onDrop: (e: React.DragEvent, index: number) => void;
   onDragEnd: () => void;
   isDragging: boolean;
+  onTouchDragStart: (index: number) => void;
+  onTouchDragOver: (targetIndex: number) => void;
+  onTouchDragEnd: () => void;
+  isDragOverTarget?: boolean;
 }
 
 export const AgendaTableRow: React.FC<AgendaTableRowProps> = ({
@@ -38,8 +42,13 @@ export const AgendaTableRow: React.FC<AgendaTableRowProps> = ({
   onDragOver,
   onDrop,
   onDragEnd,
-  isDragging
+  isDragging,
+  onTouchDragStart,
+  onTouchDragOver,
+  onTouchDragEnd,
+  isDragOverTarget
 }) => {
+  const rowRef = useRef<HTMLDivElement>(null);
   const [modalExtra, setModalExtra] = useState(false);
   const [extraInput, setExtraInput] = useState(
     servicio.monto_extra ? String(servicio.monto_extra) : ''
@@ -64,32 +73,85 @@ export const AgendaTableRow: React.FC<AgendaTableRowProps> = ({
     setModalExtra(false);
   };
 
+  // Handlers para arrastrar en móviles (Android / iOS)
+  const handleTouchStart = () => {
+    onTouchDragStart(index);
+    if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+      try {
+        window.navigator.vibrate(30);
+      } catch (_) {}
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    // Evitar scroll nativo ÚNICAMENTE cuando se arrastra desde el icono grip
+    if (e.cancelable) {
+      e.preventDefault();
+    }
+
+    const elem = document.elementFromPoint(touch.clientX, touch.clientY);
+    const targetRow = elem?.closest('[data-agenda-row-index]');
+    if (targetRow) {
+      const targetIdx = Number(targetRow.getAttribute('data-agenda-row-index'));
+      if (!isNaN(targetIdx)) {
+        onTouchDragOver(targetIdx);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    onTouchDragEnd();
+  };
+
   const isCancelado = servicio.estado === 'CANCELADO';
 
   return (
     <div
-      draggable
-      onDragStart={(e) => onDragStart(e, index)}
+      ref={rowRef}
+      data-agenda-row-index={index}
       onDragOver={(e) => onDragOver(e, index)}
       onDrop={(e) => onDrop(e, index)}
-      onDragEnd={onDragEnd}
-      className={`group relative bg-[#13171C] hover:bg-[#181D23] border border-[#232B36] rounded-xl p-3 lg:px-4 lg:py-3 transition-all ${
-        isDragging ? 'opacity-40 border-dashed border-[#00CED1]' : ''
+      className={`group relative bg-[#13171C] hover:bg-[#181D23] border rounded-xl p-3 lg:px-4 lg:py-3 transition-all ${
+        isDragging 
+          ? 'opacity-35 border-dashed border-[#00CED1] scale-[0.99] shadow-xl' 
+          : isDragOverTarget
+            ? 'border-t-2 border-t-[#00CED1] border-[#00CED1]/50 bg-[#16212B] shadow-lg shadow-[#00CED1]/10'
+            : 'border-[#232B36]'
       } ${isCancelado ? 'opacity-50 line-through' : ''}`}
     >
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        {/* Lado Izquierdo: Handle + Cliente + Dirección + Tipo */}
-        <div className="flex items-start lg:items-center gap-2.5 flex-1 min-w-0">
-          {/* Grip Handle para arrastrar con mouse o dedo */}
+        {/* Lado Izquierdo: Grip Handle + Cliente + Dirección + Tipo */}
+        <div className="flex items-start lg:items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
+          
+          {/* GRIP HANDLE OFICIAL: SOLO se arrastra tocando esta zona señalada */}
           <div 
-            className="cursor-grab active:cursor-grabbing text-[#4A5A70] hover:text-[#00CED1] p-1 -ml-1.5 touch-none shrink-0"
-            title="Arrastra para reordenar"
+            draggable={true}
+            onDragStart={(e) => {
+              if (rowRef.current && e.dataTransfer) {
+                e.dataTransfer.effectAllowed = 'move';
+                try {
+                  e.dataTransfer.setDragImage(rowRef.current, 25, 25);
+                } catch (_) {}
+              }
+              onDragStart(e, index);
+            }}
+            onDragEnd={onDragEnd}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
+            className="w-10 h-10 sm:w-7 sm:h-7 flex items-center justify-center rounded-xl sm:rounded-lg text-[#00CED1] hover:text-cyan-300 bg-[#00CED1]/10 sm:bg-transparent hover:bg-[#00CED1]/20 active:bg-[#00CED1]/30 transition shrink-0 cursor-grab active:cursor-grabbing touch-none select-none -ml-1 sm:ml-0"
+            title="Toca o arrastra aquí para reordenar"
+            aria-label="Arrastrar fila"
           >
-            <GripVertical className="w-4 h-4" />
+            <GripVertical className="w-5 h-5 sm:w-4 sm:h-4 stroke-[2.5]" />
           </div>
 
           {/* 1. CLIENTE */}
-          <div className="min-w-[190px] max-w-[240px] space-y-1 shrink-0">
+          <div className="min-w-[170px] sm:min-w-[190px] max-w-[240px] space-y-1 shrink-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-extrabold text-[#F0F4F8] text-xs uppercase tracking-tight truncate">
                 {servicio.cliente_nombre}
@@ -165,7 +227,7 @@ export const AgendaTableRow: React.FC<AgendaTableRowProps> = ({
             <button
               type="button"
               onClick={() => setModalExtra(true)}
-              className={`px-2 py-1 text-[11px] font-bold rounded-lg border transition ${
+              className={`h-10 sm:h-8 px-2.5 sm:px-2 flex items-center justify-center text-xs font-bold rounded-xl border transition cursor-pointer ${
                 servicio.monto_extra && servicio.monto_extra > 0
                   ? 'bg-amber-950/70 border-amber-700 text-amber-300'
                   : 'bg-[#181D22] hover:bg-[#232B36] border-[#2E3847] text-[#8A9BB0] hover:text-[#F0F4F8]'
@@ -177,12 +239,12 @@ export const AgendaTableRow: React.FC<AgendaTableRowProps> = ({
             </button>
           </div>
 
-          {/* OPERARIO SELECTOR (Dropdown en fila exacto a captura de referencia) */}
-          <div className="relative min-w-[150px] max-w-[190px]">
+          {/* OPERARIO SELECTOR */}
+          <div className="relative min-w-[140px] sm:min-w-[160px] max-w-[190px]">
             <select
               value={operarioActualId}
               onChange={(e) => handleOperarioChange(e.target.value)}
-              className="w-full pl-2.5 pr-6 py-1.5 text-xs font-bold bg-[#181D22] hover:bg-[#222A36] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:border-[#00CED1] focus:outline-none appearance-none truncate cursor-pointer"
+              className="w-full h-10 sm:h-8 pl-2.5 pr-6 text-xs font-bold bg-[#181D22] hover:bg-[#222A36] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:border-[#00CED1] focus:outline-none appearance-none truncate cursor-pointer"
             >
               <option value="">Sin asignar</option>
               {operariosDisponibles.map(op => (
@@ -191,15 +253,15 @@ export const AgendaTableRow: React.FC<AgendaTableRowProps> = ({
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-3.5 h-3.5 text-[#8A9BB0] absolute right-2 top-2.5 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-[#8A9BB0] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {/* MOVILIDAD SELECTOR (Píldora dorada TAXI 1 exacto a captura de referencia) */}
+          {/* MOVILIDAD SELECTOR */}
           <div className="relative">
             <select
               value={movilidadActual}
               onChange={(e) => handleMovilidadChange(e.target.value)}
-              className="pl-2.5 pr-6 py-1.5 text-xs font-black uppercase rounded-xl border border-amber-600/80 bg-amber-950/40 text-amber-300 hover:bg-amber-900/40 focus:outline-none appearance-none cursor-pointer"
+              className="h-10 sm:h-8 pl-2.5 pr-6 text-xs font-black uppercase rounded-xl border border-amber-600/80 bg-amber-950/40 text-amber-300 hover:bg-amber-900/40 focus:outline-none appearance-none cursor-pointer"
             >
               <optgroup label="Taxis (1 al 5)" className="bg-[#181D22] text-[#8A9BB0]">
                 <option value="TAXI 1" className="bg-[#181D22] text-[#F0F4F8]">TAXI 1</option>
@@ -217,36 +279,39 @@ export const AgendaTableRow: React.FC<AgendaTableRowProps> = ({
               </optgroup>
               <option value="Sin movilidad" className="bg-[#181D22] text-[#8A9BB0]">Sin movilidad</option>
             </select>
-            <ChevronDown className="w-3 h-3 text-amber-400 absolute right-1.5 top-2.5 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-amber-400 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {/* ACCIONES (Editar, Compartir, Cancelar) */}
-          <div className="flex items-center gap-1">
+          {/* ACCIONES (ÍCONOS GRANDES EN ANDROID / MÓVIL) */}
+          <div className="flex items-center gap-2 sm:gap-1.5 shrink-0">
+            {/* 1. Botón Editar */}
             <button
               type="button"
               onClick={() => onEdit(servicio)}
-              className="p-1.5 rounded-lg bg-[#181D22] hover:bg-[#252D38] text-[#8A9BB0] hover:text-[#00CED1] border border-[#252D38] transition"
+              className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-xl bg-[#181D22] hover:bg-[#252D38] active:bg-[#00CED1]/20 text-[#8A9BB0] hover:text-[#00CED1] border border-[#2E3847] shadow-xs active:scale-95 transition cursor-pointer"
               title="Editar servicio"
             >
-              <Edit2 className="w-3.5 h-3.5" />
+              <Edit2 className="w-5 h-5 sm:w-3.5 sm:h-3.5" />
             </button>
 
+            {/* 2. Botón Compartir por WhatsApp */}
             <button
               type="button"
               onClick={() => onShare(servicio)}
-              className="p-1.5 rounded-lg bg-[#181D22] hover:bg-emerald-950/80 text-[#8A9BB0] hover:text-emerald-400 border border-[#252D38] transition"
+              className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-xl bg-[#181D22] hover:bg-emerald-950/80 active:bg-emerald-900/50 text-[#8A9BB0] hover:text-emerald-400 border border-[#2E3847] shadow-xs active:scale-95 transition cursor-pointer"
               title="Compartir por WhatsApp"
             >
-              <Share2 className="w-3.5 h-3.5" />
+              <Share2 className="w-5 h-5 sm:w-3.5 sm:h-3.5" />
             </button>
 
+            {/* 3. Botón Cancelar / Eliminar */}
             <button
               type="button"
               onClick={() => onCancel(servicio.id, servicio.cliente_nombre)}
-              className="p-1.5 rounded-lg bg-[#181D22] hover:bg-rose-950/80 text-[#8A9BB0] hover:text-rose-400 border border-[#252D38] transition"
+              className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-xl bg-[#181D22] hover:bg-rose-950/80 active:bg-rose-900/50 text-[#8A9BB0] hover:text-rose-400 border border-[#2E3847] shadow-xs active:scale-95 transition cursor-pointer"
               title="Cancelar / Eliminar"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-5 h-5 sm:w-3.5 sm:h-3.5" />
             </button>
           </div>
         </div>
@@ -291,4 +356,3 @@ export const AgendaTableRow: React.FC<AgendaTableRowProps> = ({
     </div>
   );
 };
-

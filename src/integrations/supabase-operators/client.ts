@@ -1,13 +1,19 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+export const REPO_DEFAULT_OPS_URL = 'https://eszshwdyvfuzynnvedxi.supabase.co';
+export const REPO_DEFAULT_OPS_KEY = 'sb_publishable_0jQCEYJ-jUqdhnehK7X3ig_bIgiOChy';
+
 export const getOperatorsSupabaseConfig = () => {
   const envUrl = import.meta.env.VITE_SUPABASE_OPERATORS_URL;
   const envKey = import.meta.env.VITE_SUPABASE_OPERATORS_ANON_KEY;
   const localUrl = localStorage.getItem('splash_supa_ops_url');
   const localKey = localStorage.getItem('splash_supa_ops_key');
 
-  const url = (envUrl && envUrl.trim() !== '') ? envUrl.trim() : (localUrl ? localUrl.trim() : '');
-  const key = (envKey && envKey.trim() !== '') ? envKey.trim() : (localKey ? localKey.trim() : '');
+  const isInvalidCachedKey = localKey && (localKey.includes('juqdhneh') || localKey.includes('bIgioChy'));
+  const effectiveLocalKey = isInvalidCachedKey ? '' : localKey;
+
+  const url = (envUrl && envUrl.trim() !== '') ? envUrl.trim() : (localUrl ? localUrl.trim() : REPO_DEFAULT_OPS_URL);
+  const key = (envKey && envKey.trim() !== '') ? envKey.trim() : (effectiveLocalKey ? effectiveLocalKey.trim() : REPO_DEFAULT_OPS_KEY);
 
   return { url, key };
 };
@@ -50,18 +56,6 @@ export const getOperatorsSupabase = (): SupabaseClient | null => {
 };
 
 export const isOperatorsSupabaseConfigured = (): boolean => {
-  return getOperatorsSupabase() !== null;
+  const { url, key } = getOperatorsSupabaseConfig();
+  return Boolean(url && key && url.startsWith('http'));
 };
-
-export const saveOperatorsSupabaseCredentials = (url: string, key: string) => {
-  if (url) localStorage.setItem('splash_supa_ops_url', url.trim());
-  if (key) localStorage.setItem('splash_supa_ops_key', key.trim());
-  return initOperatorsSupabase(url, key);
-};
-
-export const clearOperatorsSupabaseCredentials = () => {
-  localStorage.removeItem('splash_supa_ops_url');
-  localStorage.removeItem('splash_supa_ops_key');
-  operatorsClient = null;
-};
-

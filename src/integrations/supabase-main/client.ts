@@ -1,11 +1,10 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // =========================================================================
-// CONFIGURACIÓN OFICIAL FIJADA EN EL REPOSITORIO PARA SIEMPRE (SPLASH)
-// Se gestiona únicamente desde los archivos del código / .env
+// CONFIGURACIÓN OFICIAL FIJADA EN EL REPOSITORIO (SUMAQ)
 // =========================================================================
 export const REPO_DEFAULT_MAIN_URL = 'https://eszshwdyvfuzynnvedxi.supabase.co';
-export const REPO_DEFAULT_MAIN_KEY = 'sb_publishable_0jQCEYJ-juqdhnehK7X3ig_bIgioChy';
+export const REPO_DEFAULT_MAIN_KEY = 'sb_publishable_0jQCEYJ-jUqdhnehK7X3ig_bIgiOChy';
 
 export const normalizeSupabaseUrl = (raw: string): string => {
   if (!raw) return '';
@@ -22,9 +21,13 @@ export const getMainSupabaseConfig = () => {
     ? envUrl 
     : (localUrl && localUrl.trim() !== '' ? localUrl : REPO_DEFAULT_MAIN_URL);
     
+  // Si la clave guardada en localStorage es la versión anterior con minúsculas erróneas, usar la clave válida del repositorio
+  const isInvalidCachedKey = localKey && (localKey.includes('juqdhneh') || localKey.includes('bIgioChy'));
+  const effectiveLocalKey = isInvalidCachedKey ? '' : localKey;
+
   const key = (envKey && envKey.trim() !== '') 
     ? envKey.trim() 
-    : (localKey && localKey.trim() !== '' ? localKey.trim() : REPO_DEFAULT_MAIN_KEY);
+    : (effectiveLocalKey && effectiveLocalKey.trim() !== '' ? effectiveLocalKey.trim() : REPO_DEFAULT_MAIN_KEY);
 
   const url = normalizeSupabaseUrl(rawUrl);
 
@@ -75,5 +78,6 @@ export const getMainSupabase = (): SupabaseClient | null => {
 };
 
 export const isMainSupabaseConfigured = (): boolean => {
-  return getMainSupabase() !== null;
+  const { url, key } = getMainSupabaseConfig();
+  return Boolean(url && key && url.startsWith('http'));
 };
