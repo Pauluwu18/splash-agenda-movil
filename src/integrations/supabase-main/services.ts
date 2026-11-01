@@ -6,13 +6,14 @@ import { getMainSupabase, isMainSupabaseConfigured } from './client';
 import { fetchOperarios } from '../supabase-operators/operators';
 
 // =========================================================================
-// DATOS DE CATÁLOGO Y CONFIGURACIÓN REAL DE SPLASH
+// DATOS DE CATÁLOGO Y CONFIGURACIÓN REAL DE SUMAQ
 // =========================================================================
 export const EMPRESAS_DEFAULT: Empresa[] = [
-  { id: 'emp-1', nombre: 'SPLASH Principal', color: '#00CED1', activo: true },
-  { id: 'emp-2', nombre: 'SPLASH Detailing', color: '#60A5FA', activo: true },
-  { id: 'emp-3', nombre: 'SPLASH Flota', color: '#FB923C', activo: true },
-  { id: 'emp-4', nombre: 'SPLASH Express', color: '#4ADE80', activo: true }
+  { id: 'emp-1', nombre: 'SUMAQ', color: '#00CED1', activo: true },
+  { id: 'emp-2', nombre: 'SUMAQ Limpieza', color: '#60A5FA', activo: true },
+  { id: 'emp-3', nombre: 'SUMAQ Flota', color: '#FB923C', activo: true },
+  { id: 'emp-4', nombre: 'CLEANIX', color: '#A855F7', activo: true },
+  { id: 'emp-5', nombre: 'SPLASH', color: '#22C55E', activo: true }
 ];
 
 export const CANALES_DEFAULT: CanalOrigen[] = [
@@ -24,57 +25,126 @@ export const CANALES_DEFAULT: CanalOrigen[] = [
 ];
 
 export const VANS_DEFAULT: Vehiculo[] = [
+  { id: 'van-taxi1', nombre: 'TAXI 1', placa: 'TAXI-01', estado: 'ACTIVO' },
+  { id: 'van-taxi2', nombre: 'TAXI 2', placa: 'TAXI-02', estado: 'ACTIVO' },
   { id: 'van-1', nombre: 'Van 01 (Las Flores)', placa: 'ABC-123', estado: 'ACTIVO' },
   { id: 'van-2', nombre: 'Van 02 (Surco)', placa: 'DEF-456', estado: 'ACTIVO' },
-  { id: 'van-3', nombre: 'Van 03 (Miraflores)', placa: 'GHI-789', estado: 'ACTIVO' },
-  { id: 'van-4', nombre: 'Van 04 (San Isidro)', placa: 'JKL-012', estado: 'ACTIVO' }
+  { id: 'van-sin', nombre: 'Sin movilidad', placa: '', estado: 'ACTIVO' }
 ];
 
 export const CATALOGO_DEFAULT: CategoriaCatalogo[] = [
   {
-    id: 'cat-lavado',
-    nombre: 'Lavado y Detallado Automotriz',
-    icono: 'Car',
-    subcategorias: [
-      { id: 'sub-lav-auto', categoria_id: 'cat-lavado', nombre: 'Lavado Premium Auto', tipo_medida: 'unidad', precio_sugerido: 75.0 },
-      { id: 'sub-lav-camioneta', categoria_id: 'cat-lavado', nombre: 'Lavado Premium Camioneta / SUV', tipo_medida: 'unidad', precio_sugerido: 95.0 },
-      { id: 'sub-lav-van', categoria_id: 'cat-lavado', nombre: 'Lavado Camioneta 3 Filas / Van', tipo_medida: 'unidad', precio_sugerido: 120.0 },
-      { id: 'sub-lav-motor', categoria_id: 'cat-lavado', nombre: 'Lavado de Motor al Detalle', tipo_medida: 'unidad', precio_sugerido: 60.0 },
-      { id: 'sub-pulido', categoria_id: 'cat-lavado', nombre: 'Pulido y Encerado Protector', tipo_medida: 'unidad', precio_sugerido: 180.0 }
-    ]
-  },
-  {
-    id: 'cat-tapiz',
-    nombre: 'Limpieza de Tapices y Muebles',
+    id: 'cat-muebles',
+    nombre: 'Muebles y Tapices',
     icono: 'Sofa',
     subcategorias: [
-      { id: 'sub-tap-auto', categoria_id: 'cat-tapiz', nombre: 'Lavado de Tapiz Auto Completo', tipo_medida: 'asientos', precio_sugerido: 160.0 },
-      { id: 'sub-tap-suv', categoria_id: 'cat-tapiz', nombre: 'Lavado de Tapiz Camioneta Completa', tipo_medida: 'asientos', precio_sugerido: 200.0 },
-      { id: 'sub-mueble-2c', categoria_id: 'cat-tapiz', nombre: 'Sofá / Mueble de 2 Cuerpos', tipo_medida: 'plazas', precio_sugerido: 120.0 },
-      { id: 'sub-mueble-3c', categoria_id: 'cat-tapiz', nombre: 'Sofá / Mueble de 3 Cuerpos', tipo_medida: 'plazas', precio_sugerido: 150.0 },
-      { id: 'sub-colchon-2p', categoria_id: 'cat-tapiz', nombre: 'Colchón 2 Plazas', tipo_medida: 'plazas', precio_sugerido: 110.0 },
-      { id: 'sub-alfombra-m2', categoria_id: 'cat-tapiz', nombre: 'Limpieza de Alfombra', tipo_medida: 'm2', precio_sugerido: 18.0 }
+      { id: 'sub-mueble-321', categoria_id: 'cat-muebles', nombre: 'Mueble 3-2-1', tipo_medida: 'unidad', precio_sugerido: 140.0 },
+      { id: 'sub-mueble-l-peq', categoria_id: 'cat-muebles', nombre: 'Mueble en L Pequeño', tipo_medida: 'unidad', precio_sugerido: 130.0 },
+      { id: 'sub-mueble-l-gde', categoria_id: 'cat-muebles', nombre: 'Mueble en L Grande', tipo_medida: 'unidad', precio_sugerido: 180.0 },
+      { id: 'sub-mueble-3c', categoria_id: 'cat-muebles', nombre: 'Mueble 3 Cuerpos', tipo_medida: 'unidad', precio_sugerido: 100.0 },
+      { id: 'sub-mueble-2c', categoria_id: 'cat-muebles', nombre: 'Mueble 2 Cuerpos', tipo_medida: 'unidad', precio_sugerido: 80.0 },
+      { id: 'sub-sillon-1c', categoria_id: 'cat-muebles', nombre: 'Sillón / Sofá 1 Cuerpo', tipo_medida: 'unidad', precio_sugerido: 50.0 },
+      { id: 'sub-butaca', categoria_id: 'cat-muebles', nombre: 'Butaca', tipo_medida: 'unidad', precio_sugerido: 40.0 },
+      { id: 'sub-banqueta', categoria_id: 'cat-muebles', nombre: 'Banqueta', tipo_medida: 'unidad', precio_sugerido: 40.0 },
+      { id: 'sub-puff', categoria_id: 'cat-muebles', nombre: 'Puff', tipo_medida: 'unidad', precio_sugerido: 25.0 },
+      { id: 'sub-sillas-6', categoria_id: 'cat-muebles', nombre: '6 Sillas de Comedor', tipo_medida: 'unidad', precio_sugerido: 90.0 },
+      { id: 'sub-sillas-4', categoria_id: 'cat-muebles', nombre: '4 Sillas de Comedor', tipo_medida: 'unidad', precio_sugerido: 60.0 },
+      { id: 'sub-silla-unid', categoria_id: 'cat-muebles', nombre: 'Silla (unidad)', tipo_medida: 'unidad', precio_sugerido: 15.0 }
     ]
   },
   {
-    id: 'cat-tratamiento',
-    nombre: 'Tratamientos y Especiales',
+    id: 'cat-colchones',
+    nombre: 'Colchones',
+    icono: 'Bed',
+    subcategorias: [
+      { id: 'sub-colchon-2p', categoria_id: 'cat-colchones', nombre: 'Colchón 2 Plazas', tipo_medida: 'unidad', precio_sugerido: 90.0 },
+      { id: 'sub-colchon-queen', categoria_id: 'cat-colchones', nombre: 'Colchón Queen', tipo_medida: 'unidad', precio_sugerido: 110.0 },
+      { id: 'sub-colchon-king', categoria_id: 'cat-colchones', nombre: 'Colchón King', tipo_medida: 'unidad', precio_sugerido: 130.0 },
+      { id: 'sub-colchon-15p', categoria_id: 'cat-colchones', nombre: 'Colchón 1.5 Plazas', tipo_medida: 'unidad', precio_sugerido: 75.0 },
+      { id: 'sub-colchon-1p', categoria_id: 'cat-colchones', nombre: 'Colchón 1 Plaza', tipo_medida: 'unidad', precio_sugerido: 60.0 }
+    ]
+  },
+  {
+    id: 'cat-alfombras',
+    nombre: 'Alfombras',
+    icono: 'Layers',
+    subcategorias: [
+      { id: 'sub-alfombra-dec', categoria_id: 'cat-alfombras', nombre: 'Alfombra Decorativa', tipo_medida: 'unidad', precio_sugerido: 80.0 },
+      { id: 'sub-alfombra-m2', categoria_id: 'cat-alfombras', nombre: 'Alfombra por m2', tipo_medida: 'm2', precio_sugerido: 18.0 }
+    ]
+  },
+  {
+    id: 'cat-autos',
+    nombre: 'Vehículos',
+    icono: 'Car',
+    subcategorias: [
+      { id: 'sub-auto-tapiz', categoria_id: 'cat-autos', nombre: 'Lavado de Tapiz Auto', tipo_medida: 'unidad', precio_sugerido: 120.0 },
+      { id: 'sub-suv-tapiz', categoria_id: 'cat-autos', nombre: 'Lavado de Tapiz Camioneta / SUV', tipo_medida: 'unidad', precio_sugerido: 150.0 }
+    ]
+  },
+  {
+    id: 'cat-otros',
+    nombre: 'Otros / Personalizado',
     icono: 'Sparkles',
     subcategorias: [
-      { id: 'sub-cuero', categoria_id: 'cat-tratamiento', nombre: 'Hidratación y Tratamiento de Cuero', tipo_medida: 'asientos', precio_sugerido: 90.0 },
-      { id: 'sub-desinfeccion', categoria_id: 'cat-tratamiento', nombre: 'Desinfección con Ozono', tipo_medida: 'unidad', precio_sugerido: 50.0 },
-      { id: 'sub-faros', categoria_id: 'cat-tratamiento', nombre: 'Restauración de Faros', tipo_medida: 'piezas', precio_sugerido: 70.0 }
+      { id: 'sub-custom-1', categoria_id: 'cat-otros', nombre: 'Servicio Personalizado', tipo_medida: 'unidad', precio_sugerido: 100.0 }
     ]
   }
 ];
 
 export const DISTRITOS_LIMA = [
-  'Santiago de Surco', 'Miraflores', 'San Isidro', 'San Borja',
-  'La Molina', 'Magdalena del Mar', 'Jesús María', 'Lince',
-  'Surquillo', 'Barranco', 'San Miguel', 'Pueblo Libre',
-  'Chorrillos', 'Ate', 'Los Olivos', 'Independencia', 'San Juan de Miraflores',
-  'Callao', 'Bellavista', 'La Perla', 'Otro'
+  'San Martín de Porres', 'Callao', 'San Juan de Lurigancho', 'La Victoria',
+  'Ate', 'Lima', 'Santiago de Surco', 'Miraflores', 'San Isidro', 'San Borja',
+  'La Molina', 'Magdalena del Mar', 'Jesús María', 'Lince', 'Surquillo',
+  'Barranco', 'San Miguel', 'Pueblo Libre', 'Chorrillos', 'Los Olivos',
+  'Independencia', 'San Juan de Miraflores', 'Bellavista', 'La Perla', 'Otro'
 ];
+
+// Gestión de Catálogo Dinámico en Local y Cloud
+export const getCatalogoPersonalizado = (): CategoriaCatalogo[] => {
+  try {
+    const raw = localStorage.getItem('sumaq_catalogo_servicios');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return CATALOGO_DEFAULT;
+};
+
+export const saveCatalogoPersonalizado = (catalogo: CategoriaCatalogo[]) => {
+  localStorage.setItem('sumaq_catalogo_servicios', JSON.stringify(catalogo));
+};
+
+export const addServicioToCatalog = (categoriaNombre: string, subcategoriaNombre: string, precio: number) => {
+  const cats = getCatalogoPersonalizado();
+  let cat = cats.find(c => c.nombre.toLowerCase().trim() === categoriaNombre.toLowerCase().trim());
+  if (!cat) {
+    cat = {
+      id: `cat-${Date.now()}`,
+      nombre: categoriaNombre.trim(),
+      icono: 'Sparkles',
+      subcategorias: []
+    };
+    cats.push(cat);
+  }
+  const id = `sub-${Date.now()}`;
+  cat.subcategorias.push({
+    id,
+    categoria_id: cat.id,
+    nombre: subcategoriaNombre.trim(),
+    tipo_medida: 'unidad',
+    precio_sugerido: Number(precio) || 0
+  });
+  saveCatalogoPersonalizado(cats);
+  return cats;
+};
+
+export const deleteServicioFromCatalog = (subcategoriaId: string) => {
+  const cats = getCatalogoPersonalizado();
+  for (const cat of cats) {
+    cat.subcategorias = cat.subcategorias.filter(s => s.id !== subcategoriaId);
+  }
+  saveCatalogoPersonalizado(cats);
+  return cats;
+};
 
 // Fallback local store
 const getLocalServices = (): ServicioAgenda[] => {
@@ -108,7 +178,6 @@ export const fetchServiciosPorFecha = async (fechaStr: string): Promise<Servicio
 
       if (!error && data) {
         const mapped = data.map((item: any) => {
-          // Relacionar operarios desde el segundo Supabase mediante los IDs
           const opIds: string[] = item.operario_ids || (item.operario_id ? [item.operario_id] : []);
           const operariosAsignados = allOperators.filter(o => opIds.includes(o.id));
 
@@ -138,6 +207,7 @@ export const fetchServiciosPorFecha = async (fechaStr: string): Promise<Servicio
   const local = getLocalServices();
   return local
     .filter(s => s.fecha === fechaStr)
+    .sort((a, b) => (Number(a.orden) || 0) - (Number(b.orden) || 0))
     .map(s => {
       const opIds = s.operario_ids || (s.operario_id ? [s.operario_id] : []);
       const operariosAsignados = allOperators.filter(o => opIds.includes(o.id));
@@ -215,13 +285,14 @@ export const saveServicioAgenda = async (
     es_rectificacion: Boolean(servicioData.es_rectificacion),
     sucursal_nombre: servicioData.sucursal_nombre || 'Las Flores',
     vehiculo_id: servicioData.vehiculo_id || null,
-    van_nombre: servicioData.van_nombre || '',
+    van_nombre: servicioData.van_nombre || 'TAXI 1',
     empresa_id: servicioData.empresa_id || null,
-    empresa_nombre: servicioData.empresa_nombre || '',
+    empresa_nombre: servicioData.empresa_nombre || 'SUMAQ',
     empresa_color: servicioData.empresa_color || '#00CED1',
     canal_origen_id: servicioData.canal_origen_id || null,
     operario_id: operarioIds[0] || null,
-    operario_ids: operarioIds
+    operario_ids: operarioIds,
+    orden: Number(servicioData.orden) || 0
   };
 
   if (supa) {
@@ -271,6 +342,108 @@ export const saveServicioAgenda = async (
   setLocalServices(list);
   notifyServiciosChange();
   return record;
+};
+
+// =========================================================================
+// REORDENAMIENTO DE SERVICIOS (DRAG & DROP CON DEDO O RATÓN)
+// =========================================================================
+export const reorderServicios = async (reordered: ServicioAgenda[]): Promise<void> => {
+  const supa = getMainSupabase();
+  const list = getLocalServices();
+
+  for (let i = 0; i < reordered.length; i++) {
+    const s = reordered[i];
+    s.orden = i;
+
+    // Actualizar local
+    const localIdx = list.findIndex(item => item.id === s.id);
+    if (localIdx >= 0) {
+      list[localIdx].orden = i;
+    }
+
+    // Actualizar Supabase
+    if (supa && !s.id.startsWith('srv-')) {
+      supa.from('servicios_agenda').update({ orden: i }).eq('id', s.id).catch(() => {});
+    }
+  }
+
+  setLocalServices(list);
+  notifyServiciosChange();
+};
+
+// =========================================================================
+// ACTUALIZAR ASIGNACIÓN DIRECTA DE OPERARIO DESDE LA TABLA
+// =========================================================================
+export const updateServicioOperario = async (servicioId: string, operarioId: string, operarioNombre: string): Promise<void> => {
+  const supa = getMainSupabase();
+  const opIds = operarioId ? [operarioId] : [];
+
+  if (supa && !servicioId.startsWith('srv-')) {
+    try {
+      await supa.from('servicios_agenda').update({
+        operario_id: operarioId || null,
+        operario_ids: opIds
+      }).eq('id', servicioId);
+    } catch (e) {}
+  }
+
+  const list = getLocalServices();
+  const item = list.find(s => s.id === servicioId);
+  if (item) {
+    item.operario_id = operarioId || undefined;
+    item.operario_ids = opIds;
+    setLocalServices(list);
+  }
+  notifyServiciosChange();
+};
+
+// =========================================================================
+// ACTUALIZAR MOVILIDAD (TAXI 1, VAN, ETC.) DIRECTAMENTE
+// =========================================================================
+export const updateServicioMovilidad = async (servicioId: string, vanNombre: string): Promise<void> => {
+  const esTaxi = vanNombre.toUpperCase().includes('TAXI');
+  const supa = getMainSupabase();
+
+  if (supa && !servicioId.startsWith('srv-')) {
+    try {
+      await supa.from('servicios_agenda').update({
+        van_nombre: vanNombre,
+        es_taxi: esTaxi
+      }).eq('id', servicioId);
+    } catch (e) {}
+  }
+
+  const list = getLocalServices();
+  const item = list.find(s => s.id === servicioId);
+  if (item) {
+    item.van_nombre = vanNombre;
+    item.es_taxi = esTaxi;
+    setLocalServices(list);
+  }
+  notifyServiciosChange();
+};
+
+// =========================================================================
+// AGREGAR COBRO EXTRA (+ EXTRA) DIRECTAMENTE
+// =========================================================================
+export const updateServicioMontoExtra = async (servicioId: string, nuevoExtra: number): Promise<void> => {
+  const supa = getMainSupabase();
+
+  if (supa && !servicioId.startsWith('srv-')) {
+    try {
+      await supa.from('servicios_agenda').update({
+        monto_extra: nuevoExtra
+      }).eq('id', servicioId);
+    } catch (e) {}
+  }
+
+  const list = getLocalServices();
+  const item = list.find(s => s.id === servicioId);
+  if (item) {
+    item.monto_extra = nuevoExtra;
+    setLocalServices(list);
+  }
+  notifyServiciosChange();
 };
 
 // =========================================================================
@@ -329,9 +502,7 @@ const saveClienteRecord = async (cliente: Partial<Cliente>) => {
           direccion: cliente.direccion,
           empresa_id: cliente.empresa_id
         }], { onConflict: 'telefono' });
-    } catch (e) {
-      // Silencioso
-    }
+    } catch (e) {}
   }
 
   const raw = localStorage.getItem('splash_clientes_local');
@@ -351,64 +522,48 @@ const saveClienteRecord = async (cliente: Partial<Cliente>) => {
 let broadcastChannel: BroadcastChannel | null = null;
 try {
   if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-    broadcastChannel = new BroadcastChannel('splash_sync_channel');
+    broadcastChannel = new BroadcastChannel('sumaq_sync_channel');
   }
 } catch (e) {}
 
-/**
- * Emite una notificación de cambio hacia todas las pestañas locales
- * y hacia todos los demás dispositivos (PC / Celular) conectados a Supabase.
- */
 export const notifyServiciosChange = () => {
-  // 1. BroadcastChannel local (otras pestañas en la misma PC o celular)
   if (broadcastChannel) {
     try {
       broadcastChannel.postMessage({ type: 'SERVICIOS_CHANGED', time: Date.now() });
     } catch (e) {}
   }
 
-  // 2. CustomEvent en la ventana actual
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('splash_servicios_changed', { detail: { time: Date.now() } }));
+    window.dispatchEvent(new CustomEvent('sumaq_servicios_changed', { detail: { time: Date.now() } }));
 
-    // 3. Storage event fallback
     try {
-      localStorage.setItem('splash_last_sync_time', String(Date.now()));
+      localStorage.setItem('sumaq_last_sync_time', String(Date.now()));
     } catch (e) {}
   }
 
-  // 4. Supabase Realtime Broadcast (llega a PC / Móviles en cualquier lugar del mundo)
   const supa = getMainSupabase();
   if (supa) {
     try {
-      const channel = supa.channel('splash_realtime_broadcast');
+      const channel = supa.channel('sumaq_realtime_broadcast');
       channel.send({
         type: 'broadcast',
         event: 'servicios_changed',
         payload: { time: Date.now() }
       }).catch(() => {});
-    } catch (e) {
-      console.warn('Error enviando broadcast Realtime a Supabase:', e);
-    }
+    } catch (e) {}
   }
 };
 
-/**
- * Se suscribe a cambios en tiempo real desde Supabase, BroadcastChannel,
- * pestañas locales y eventos de foco del dispositivo.
- */
 export const subscribeToServiciosRealtime = (onUpdate: () => void): (() => void) => {
   const cleanups: (() => void)[] = [];
 
-  // 1. Escuchar CustomEvent local
   const handleCustom = () => onUpdate();
-  window.addEventListener('splash_servicios_changed', handleCustom);
-  cleanups.push(() => window.removeEventListener('splash_servicios_changed', handleCustom));
+  window.addEventListener('sumaq_servicios_changed', handleCustom);
+  cleanups.push(() => window.removeEventListener('sumaq_servicios_changed', handleCustom));
 
-  // 2. Escuchar BroadcastChannel (otras pestañas)
   if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
     try {
-      const bc = new BroadcastChannel('splash_sync_channel');
+      const bc = new BroadcastChannel('sumaq_sync_channel');
       const handleBC = (ev: MessageEvent) => {
         if (ev.data?.type === 'SERVICIOS_CHANGED') {
           onUpdate();
@@ -422,16 +577,14 @@ export const subscribeToServiciosRealtime = (onUpdate: () => void): (() => void)
     } catch (e) {}
   }
 
-  // 3. Escuchar storage event (fallback entre pestañas)
   const handleStorage = (e: StorageEvent) => {
-    if (e.key === 'splash_last_sync_time' || e.key === 'splash_servicios_local') {
+    if (e.key === 'sumaq_last_sync_time' || e.key === 'splash_servicios_local') {
       onUpdate();
     }
   };
   window.addEventListener('storage', handleStorage);
   cleanups.push(() => window.removeEventListener('storage', handleStorage));
 
-  // 4. Refresco al volver al navegador o app móvil (focus y visibility)
   const handleFocus = () => onUpdate();
   const handleVisibility = () => {
     if (document.visibilityState === 'visible') {
@@ -443,7 +596,6 @@ export const subscribeToServiciosRealtime = (onUpdate: () => void): (() => void)
   cleanups.push(() => window.removeEventListener('focus', handleFocus));
   cleanups.push(() => document.removeEventListener('visibilitychange', handleVisibility));
 
-  // 5. Polling de seguridad cada 6 segundos cuando la pantalla está visible
   const intervalId = setInterval(() => {
     if (document.visibilityState === 'visible') {
       onUpdate();
@@ -451,7 +603,6 @@ export const subscribeToServiciosRealtime = (onUpdate: () => void): (() => void)
   }, 6000);
   cleanups.push(() => clearInterval(intervalId));
 
-  // 6. Suscripción a Supabase Realtime (WebSockets - Postgres changes + Broadcast)
   const supa = getMainSupabase();
   if (supa) {
     try {
@@ -460,33 +611,21 @@ export const subscribeToServiciosRealtime = (onUpdate: () => void): (() => void)
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'servicios_agenda' },
-          (payload) => {
-            console.log('⚡ Supabase Realtime Postgres:', payload.eventType);
-            onUpdate();
-          }
+          () => onUpdate()
         )
         .on(
           'broadcast',
           { event: 'servicios_changed' },
-          () => {
-            console.log('⚡ Supabase Realtime Broadcast recibido de otro dispositivo');
-            onUpdate();
-          }
+          () => onUpdate()
         )
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            console.log('🟢 Supabase Realtime canal activo');
-          }
-        });
+        .subscribe();
 
       cleanups.push(() => {
         try {
           supa.removeChannel(channel);
         } catch (e) {}
       });
-    } catch (err) {
-      console.warn('Aviso configurando Supabase Realtime:', err);
-    }
+    } catch (err) {}
   }
 
   return () => {
@@ -495,4 +634,3 @@ export const subscribeToServiciosRealtime = (onUpdate: () => void): (() => void)
     });
   };
 };
-

@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar, ChevronLeft, ChevronRight, Search, 
-  Download, Filter, Sparkles, AlertCircle, RefreshCw, Plus 
+  Download, Filter, Sparkles, AlertCircle, RefreshCw, Plus, 
+  Sun, Sunset, Clock 
 } from 'lucide-react';
 import { ServicioAgenda, Operario, Vehiculo, TurnoHorario } from '../../types';
 import { 
   fetchServiciosPorFecha, 
   deleteServicioRecord, 
   subscribeToServiciosRealtime,
+  reorderServicios,
   VANS_DEFAULT 
 } from '../../integrations/supabase-main/services';
 import { fetchOperarios } from '../../integrations/supabase-operators/operators';
 import { exportarAgendaExcel } from './ExcelExport';
-import { AgendaCard } from './AgendaCard';
+import { AgendaTableRow } from './AgendaTableRow';
 import { getTodayKey, formatMontoSoles } from '../../utils/businessRules';
 
 interface AgendaViewProps {
@@ -32,10 +34,12 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>(VANS_DEFAULT);
   const [cargando, setCargando] = useState<boolean>(true);
   
-  // Filtros
-  const [filtroTurno, setFiltroTurno] = useState<string>('TODOS');
-  const [filtroEspecial, setFiltroEspecial] = useState<'TODOS' | 'TAXI' | 'SIN_OPERARIO' | 'COMPLETADOS'>('TODOS');
+  // Turno seleccionado: Mañana, Tarde o Extras
+  const [filtroTurno, setFiltroTurno] = useState<TurnoHorario>('Mañana');
   const [busqueda, setBusqueda] = useState<string>('');
+
+  // Estado para Drag and Drop
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const cargarDatos = async (fechaActual = fecha, silencioso = false) => {
     if (!silencioso) setCargando(true);
@@ -56,7 +60,6 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   useEffect(() => {
     cargarDatos(fecha, false);
 
-    // Sincronizacion automatica en tiempo real (PC, Movil, otras pestanas)
     const unsubscribe = subscribeToServiciosRealtime(() => {
       cargarDatos(fecha, true);
     });
@@ -75,39 +78,70 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   const handleCancelarServicio = async (id: string, cliente: string) => {
     if (confirm(`¿Confirmas la cancelación del servicio de ${cliente}?`)) {
       await deleteServicioRecord(id);
-      cargarDatos(fecha);
+      cargarDatos(fecha, true);
     }
   };
 
-  // Conteo por turnos
+  // Conteo por turnos para las pestañas superiores
   const countManana = servicios.filter(s => s.horario === 'Mañana' && s.estado !== 'CANCELADO').length;
   const countTarde = servicios.filter(s => s.horario === 'Tarde' && s.estado !== 'CANCELADO').length;
   const countExtras = servicios.filter(s => s.horario === 'Extras' && s.estado !== 'CANCELADO').length;
 
-  // Filtrado reactivo
-  const serviciosFiltrados = servicios.filter(s => {
-    // Filtro por Turno
-    if (filtroTurno !== 'TODOS' && s.horario !== filtroTurno) return false;
+  // Filtrado por turno actual y búsqueda
+  const serviciosDelTurno = servicios
+    .filter(s => s.horario === filtroTurno)
+    .sort((a, b) => (Number(a.orden) || 0) - (Number(b.orden) || 0));
 
-    // Filtro Especial
-    if (filtroEspecial === 'TAXI' && !s.es_taxi) return false;
-    if (filtroEspecial === 'SIN_OPERARIO' && s.operarios && s.operarios.length > 0) return false;
-    if (filtroEspecial === 'COMPLETADOS' && s.estado !== 'COMPLETADO') return false;
-
-    // Búsqueda por texto (Cliente, Teléfono, Dirección)
-    if (busqueda.trim() !== '') {
-      const q = busqueda.toLowerCase();
-      const matchCliente = s.cliente_nombre.toLowerCase().includes(q);
-      const matchTel = s.telefono.includes(q);
-      const matchDir = s.direccion.toLowerCase().includes(q) || s.distrito.toLowerCase().includes(q);
-      const matchSvc = s.servicio_detalle.toLowerCase().includes(q);
-      if (!matchCliente && !matchTel && !matchDir && !matchSvc) return false;
-    }
-
-    return true;
+  const serviciosFiltrados = serviciosDelTurno.filter(s => {
+    if (!busqueda.trim()) return true;
+    const q = busqueda.toLowerCase();
+    return (
+      s.cliente_nombre.toLowerCase().includes(q) ||
+      s.telefono.includes(q) ||
+      s.direccion.toLowerCase().includes(q) ||
+      s.distrito.toLowerCase().includes(q) ||
+      s.servicio_detalle.toLowerCase().includes(q)
+    );
   });
 
-  const totalRecaudado = serviciosFiltrados
+  // Funciones de Drag & Drop (reordenar con mouse o dedo)
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex) return;
+
+    const list = [...serviciosFiltrados];
+    const [moved] = list.splice(draggedIndex, 1);
+    list.splice(dropIndex, 0, moved);
+
+    // Asignar nuevo orden numérico
+    list.forEach((item, idx) => {
+      item.orden = idx;
+    });
+
+    // Actualizar estado local inmediatamente
+    const otrosServicios = servicios.filter(s => s.horario !== filtroTurno);
+    setServicios([...otrosServicios, ...list]);
+    setDraggedIndex(null);
+
+    // Persistir orden
+    await reorderServicios(list);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
+  const totalRecaudadoTurno = serviciosFiltrados
     .filter(s => s.estado !== 'CANCELADO')
     .reduce((acc, s) => acc + (Number(s.precio_final) || 0) + (Number(s.monto_extra) || 0), 0);
 
@@ -119,15 +153,15 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   const isToday = fecha === getTodayKey();
 
   return (
-    <div className="pb-28 max-w-lg mx-auto">
-      {/* 1. Barra de Navegación de Fecha Superior */}
+    <div className="pb-28 w-full max-w-full lg:max-w-6xl xl:max-w-7xl mx-auto">
+      {/* 1. Barra de Controles y Fecha Superior */}
       <div className="sticky top-13 z-20 bg-[#0A0E11]/95 backdrop-blur-md px-4 py-3 border-b border-[#252D38] shadow-md space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          {/* Navegación de Días */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Navegación entre Fechas */}
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => cambiarDia(-1)}
-              className="w-9 h-9 rounded-xl bg-[#181D22] hover:bg-[#252D38] border border-[#2E3847] active:scale-95 flex items-center justify-center text-[#F0F4F8] transition"
+              className="w-9 h-9 rounded-xl bg-[#181D22] hover:bg-[#252D38] border border-[#2E3847] active:scale-95 flex items-center justify-center text-[#F0F4F8] transition cursor-pointer"
               title="Día anterior"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -135,7 +169,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
             <button
               onClick={() => setFecha(getTodayKey())}
-              className={`px-3 py-1.5 rounded-xl border font-bold text-xs flex items-center gap-1.5 transition ${
+              className={`px-3 py-1.5 rounded-xl border font-bold text-xs flex items-center gap-1.5 transition cursor-pointer ${
                 isToday 
                   ? 'bg-[#00CED1]/15 text-[#00CED1] border-[#00CED1]/40 shadow-xs' 
                   : 'bg-[#181D22] text-[#8A9BB0] border-[#2E3847] hover:text-[#F0F4F8]'
@@ -147,147 +181,154 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
             <button
               onClick={() => cambiarDia(1)}
-              className="w-9 h-9 rounded-xl bg-[#181D22] hover:bg-[#252D38] border border-[#2E3847] active:scale-95 flex items-center justify-center text-[#F0F4F8] transition"
+              className="w-9 h-9 rounded-xl bg-[#181D22] hover:bg-[#252D38] border border-[#2E3847] active:scale-95 flex items-center justify-center text-[#F0F4F8] transition cursor-pointer"
               title="Día siguiente"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
-          </div>
 
-          {/* Selector de fecha nativo y Exportar Excel */}
-          <div className="flex items-center gap-1.5">
             <input
               type="date"
               value={fecha}
               onChange={(e) => setFecha(e.target.value)}
-              className="w-9 h-9 py-1 px-1.5 bg-[#181D22] border border-[#2E3847] rounded-xl text-center text-xs font-bold text-[#F0F4F8] focus:outline-none"
-              title="Seleccionar fecha"
+              className="w-9 h-9 py-1 px-1.5 bg-[#181D22] border border-[#2E3847] rounded-xl text-center text-xs font-bold text-[#F0F4F8] focus:outline-none cursor-pointer"
+              title="Seleccionar fecha calendario"
             />
-
-            <button
-              onClick={() => exportarAgendaExcel(servicios, fecha)}
-              disabled={servicios.length === 0}
-              className="w-9 h-9 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800/80 disabled:opacity-40 flex items-center justify-center text-emerald-400 transition"
-              title="Exportar Agenda a Excel"
-            >
-              <Download className="w-4 h-4" />
-            </button>
           </div>
-        </div>
 
-        {/* 2. Pestañas de Turno con Contadores Activos (Original SPLASH) */}
-        <div className="grid grid-cols-4 gap-1.5">
-          {[
-            { id: 'TODOS', label: 'Todos', count: servicios.filter(s => s.estado !== 'CANCELADO').length },
-            { id: 'Mañana', label: '☀️ Mañana', count: countManana },
-            { id: 'Tarde', label: '🌅 Tarde', count: countTarde },
-            { id: 'Extras', label: '⏱️ Extras', count: countExtras }
-          ].map(t => (
-            <button
-              key={t.id}
-              onClick={() => setFiltroTurno(t.id)}
-              className={`py-1.5 px-1 rounded-xl text-xs font-bold flex flex-col items-center justify-center border transition ${
-                filtroTurno === t.id
-                  ? 'bg-[#00CED1] text-slate-950 border-[#00CED1] shadow-xs'
-                  : 'bg-[#181D22] text-[#8A9BB0] border-[#252D38] hover:bg-[#1E2530]'
-              }`}
-            >
-              <span className="text-[10px] leading-tight">{t.label}</span>
-              <span className="text-xs font-black">{t.count}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* 3. Buscador y Filtros Especiales */}
-        <div className="space-y-2">
-          <div className="relative">
+          {/* Buscador Rápido */}
+          <div className="relative flex-1 min-w-[200px] max-w-md">
             <Search className="w-4 h-4 text-[#8A9BB0] absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Buscar por cliente, teléfono o dirección..."
+              placeholder="Buscar cliente, teléfono, distrito o mueble..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs bg-[#111418] border border-[#252D38] rounded-xl text-[#F0F4F8] placeholder-[#4A5A70] focus:ring-1 focus:ring-[#00CED1] focus:outline-none"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-[#181D22] border border-[#2E3847] rounded-xl text-[#F0F4F8] placeholder-[#4A5A70] focus:ring-1 focus:ring-[#00CED1] focus:outline-none"
             />
           </div>
 
-          {/* Chips de filtros especiales */}
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-            {[
-              { id: 'TODOS', label: 'Ver todos' },
-              { id: 'TAXI', label: '🚕 Solo Taxis' },
-              { id: 'SIN_OPERARIO', label: '⚠️ Sin Operario' },
-              { id: 'COMPLETADOS', label: '✅ Realizados' }
-            ].map(f => (
-              <button
-                key={f.id}
-                onClick={() => setFiltroEspecial(f.id as any)}
-                className={`whitespace-nowrap px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition ${
-                  filtroEspecial === f.id
-                    ? 'bg-[#1E2530] text-[#00CED1] border-[#00CED1]/50'
-                    : 'bg-[#111418] text-[#8A9BB0] border-[#252D38] hover:text-[#F0F4F8]'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+          {/* Botones de Acción (Crear y Exportar Excel) */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => exportarAgendaExcel(servicios, fecha)}
+              disabled={servicios.length === 0}
+              className="px-3 py-2 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800 disabled:opacity-40 flex items-center gap-1.5 text-emerald-400 text-xs font-black transition cursor-pointer shadow-sm"
+              title="Descargar Excel oficial de la agenda"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Exportar Excel</span>
+            </button>
+
+            <button
+              onClick={onNewService}
+              className="px-3.5 py-2 rounded-xl bg-[#00CED1] hover:brightness-110 active:scale-95 text-slate-950 text-xs font-black flex items-center gap-1.5 transition cursor-pointer shadow-md shadow-[#00CED1]/20"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Agendar</span>
+            </button>
           </div>
         </div>
 
-        {/* Resumen de totales */}
-        <div className="flex items-center justify-between text-xs pt-1 border-t border-[#1E2530]">
-          <span className="text-[#8A9BB0]">
-            Mostrando <strong>{serviciosFiltrados.length}</strong> de {servicios.length} citas
-          </span>
-          <span className="font-extrabold text-[#00CED1]">
-            Total: S/ {formatMontoSoles(totalRecaudado)}
-          </span>
+        {/* 2. Pestañas de Turno con Barra Indicadora Turquesa (Idéntico a captura SPLASH/SUMAQ) */}
+        <div className="flex items-center border-b border-[#252D38] -mx-4 px-4 gap-6 pt-1">
+          {[
+            { id: 'Mañana' as TurnoHorario, label: 'Mañana', count: countManana, icon: '☀️' },
+            { id: 'Tarde' as TurnoHorario, label: 'Tarde', count: countTarde, icon: '🌅' },
+            { id: 'Extras' as TurnoHorario, label: 'Extras', count: countExtras, icon: '⏱️' }
+          ].map(t => {
+            const isActive = filtroTurno === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setFiltroTurno(t.id)}
+                className={`pb-3 pt-1 text-xs font-black flex items-center gap-2 transition relative cursor-pointer ${
+                  isActive ? 'text-[#00CED1]' : 'text-[#8A9BB0] hover:text-[#F0F4F8]'
+                }`}
+              >
+                <span>{t.icon}</span>
+                <span>{t.label}</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  isActive 
+                    ? 'bg-[#00CED1]/20 text-[#00CED1]' 
+                    : 'bg-[#181D22] text-[#8A9BB0]'
+                }`}>
+                  {t.count}
+                </span>
+
+                {/* Línea turquesa activa */}
+                {isActive && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00CED1] shadow-sm shadow-[#00CED1]" />
+                )}
+              </button>
+            );
+          })}
+
+          <div className="ml-auto text-xs font-extrabold text-[#00CED1] pb-2 hidden sm:block">
+            Ingreso Turno: S/ {formatMontoSoles(totalRecaudadoTurno)}
+          </div>
         </div>
       </div>
 
-      {/* 4. Lista de Tarjetas de Servicios */}
-      <div className="p-4 space-y-3.5">
-        {cargando ? (
-          <div className="py-20 text-center space-y-3">
-            <div className="w-9 h-9 border-3 border-[#00CED1] border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs text-[#8A9BB0] font-medium">Cargando agenda de SPLASH...</p>
+      {/* 3. Encabezados de Tabla en Desktop (Idéntico a captura de referencia) */}
+      <div className="px-4 pt-4">
+        <div className="hidden lg:flex items-center justify-between text-[10px] font-black tracking-wider uppercase text-[#8A9BB0] px-4 py-2 bg-[#0E1216] rounded-t-xl border-x border-t border-[#232B36]">
+          <div className="flex items-center gap-3 flex-1">
+            <span className="w-5"></span>
+            <span className="min-w-[210px]">CLIENTE</span>
+            <span className="min-w-[170px]">DIRECCIÓN</span>
+            <span className="min-w-[180px]">TIPO</span>
           </div>
-        ) : serviciosFiltrados.length === 0 ? (
-          <div className="py-16 px-4 text-center bg-[#181D22] rounded-3xl border border-[#252D38] space-y-4">
-            <div className="w-14 h-14 bg-[#1E2530] text-[#00CED1] rounded-2xl flex items-center justify-center mx-auto border border-[#2E3847]">
-              <Calendar className="w-7 h-7" />
+          <div className="flex items-center gap-6 justify-end">
+            <span className="min-w-[85px] text-right">PRECIO</span>
+            <span className="min-w-[65px] text-center">EXTRA</span>
+            <span className="min-w-[170px]">OPERARIO</span>
+            <span className="min-w-[90px]">VAN</span>
+            <span className="w-20 text-center">ACCIONES</span>
+          </div>
+        </div>
+
+        {/* 4. Lista de Filas Reordenables */}
+        <div className="space-y-2 lg:space-y-1.5 pt-2 lg:pt-0">
+          {cargando ? (
+            <div className="py-24 text-center text-xs text-[#8A9BB0] space-y-2">
+              <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#00CED1]" />
+              <p>Cargando agenda de SUMAQ...</p>
             </div>
-            <div className="space-y-1">
-              <h4 className="font-bold text-[#F0F4F8] text-base">Sin citas para mostrar</h4>
-              <p className="text-xs text-[#8A9BB0] max-w-xs mx-auto">
-                No hay servicios programados con los filtros seleccionados para el {fechaBonita}.
+          ) : serviciosFiltrados.length === 0 ? (
+            <div className="text-center py-20 bg-[#13171C] rounded-2xl border border-[#232B36] p-6 space-y-3">
+              <p className="text-sm font-bold text-[#F0F4F8]">No hay citas en el turno de {filtroTurno}</p>
+              <p className="text-xs text-[#8A9BB0]">
+                Puedes agendar un nuevo servicio con el botón superior.
               </p>
+              <button
+                onClick={onNewService}
+                className="mt-2 py-2 px-4 bg-[#00CED1] hover:brightness-110 text-slate-950 font-black text-xs rounded-xl shadow-md transition"
+              >
+                + Agendar Cita
+              </button>
             </div>
-            <button
-              onClick={onNewService}
-              className="py-3 px-5 bg-gradient-to-r from-[#0090A0] to-[#00CED1] hover:brightness-110 active:scale-95 text-slate-950 font-black text-xs rounded-xl inline-flex items-center gap-2 shadow-lg shadow-[#00CED1]/20 transition"
-            >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              <span>Registrar Servicio Ahora</span>
-            </button>
-          </div>
-        ) : (
-          serviciosFiltrados.map((item) => (
-            <AgendaCard
-              key={item.id}
-              servicio={item}
-              operariosDisponibles={operarios}
-              vehiculosDisponibles={vehiculos}
-              onShare={onShareService}
-              onEdit={onEditService}
-              onCancel={handleCancelarServicio}
-              onUpdateSuccess={() => cargarDatos(fecha)}
-            />
-          ))
-        )}
+          ) : (
+            serviciosFiltrados.map((svc, idx) => (
+              <AgendaTableRow
+                key={svc.id}
+                servicio={svc}
+                index={idx}
+                operariosDisponibles={operarios}
+                vehiculosDisponibles={vehiculos}
+                onShare={onShareService}
+                onEdit={onEditService}
+                onCancel={handleCancelarServicio}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onDragEnd={handleDragEnd}
+                isDragging={draggedIndex === idx}
+              />
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
 };
-
-

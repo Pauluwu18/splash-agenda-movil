@@ -5,23 +5,23 @@ const DEFAULT_OPERARIOS: Operario[] = [
   {
     id: 'op-001',
     dni: '71234567',
-    nombres: 'Carlos',
-    apellidos: 'Mendoza Ruiz',
-    nombre_completo: 'Carlos Mendoza Ruiz',
+    nombres: 'Yerson Robiño',
+    apellidos: 'Alvarado Campos',
+    nombre_completo: 'Yerson Robiño Alvarado Campos',
     telefono: '987111222',
     rol: 'Líder',
     sucursal: 'Las Flores',
     estado: 'ACTIVO',
     sueldo_por_servicio: 35.0,
     en_capacitacion: false,
-    color: '#0284c7'
+    color: '#00CED1'
   },
   {
     id: 'op-002',
     dni: '72345678',
-    nombres: 'Miguel Ángel',
-    apellidos: 'Quispe Paucar',
-    nombre_completo: 'Miguel Ángel Quispe',
+    nombres: 'Fabrizio Antony',
+    apellidos: 'Cruz Martinez',
+    nombre_completo: 'Fabrizio Antony Cruz Martinez',
     telefono: '987333444',
     rol: 'Operario',
     sucursal: 'Las Flores',
@@ -33,30 +33,44 @@ const DEFAULT_OPERARIOS: Operario[] = [
   {
     id: 'op-003',
     dni: '73456789',
-    nombres: 'José',
-    apellidos: 'Ramírez Silva',
-    nombre_completo: 'José Ramírez Silva',
+    nombres: 'Jorge Stephano',
+    apellidos: 'Loayza Carlos',
+    nombre_completo: 'Jorge Stephano Loayza Carlos',
     telefono: '987555666',
-    rol: 'Apoyo',
+    rol: 'Operario',
     sucursal: 'Las Flores',
     estado: 'ACTIVO',
-    sueldo_por_servicio: 20.0,
-    en_capacitacion: true,
+    sueldo_por_servicio: 25.0,
+    en_capacitacion: false,
     color: '#f59e0b'
   },
   {
     id: 'op-004',
     dni: '74567890',
-    nombres: 'David',
-    apellidos: 'Flores Chávez',
-    nombre_completo: 'David Flores Chávez',
+    nombres: 'Lionel Matías',
+    apellidos: 'Rojas Picon',
+    nombre_completo: 'Lionel Matías Rojas Picon',
     telefono: '987777888',
     rol: 'Técnico',
-    sucursal: 'Surco',
+    sucursal: 'Las Flores',
     estado: 'ACTIVO',
     sueldo_por_servicio: 30.0,
     en_capacitacion: false,
     color: '#8b5cf6'
+  },
+  {
+    id: 'op-005',
+    dni: '75678901',
+    nombres: 'Carlos',
+    apellidos: 'Mendoza Ruiz',
+    nombre_completo: 'Carlos Mendoza Ruiz',
+    telefono: '987999000',
+    rol: 'Líder',
+    sucursal: 'Las Flores',
+    estado: 'ACTIVO',
+    sueldo_por_servicio: 35.0,
+    en_capacitacion: false,
+    color: '#0284c7'
   }
 ];
 
@@ -82,7 +96,7 @@ export const fetchOperarios = async (): Promise<Operario[]> => {
         .select('*')
         .order('nombres', { ascending: true });
 
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         return data.map((d: any) => ({
           id: d.id,
           dni: d.dni || '',
@@ -91,15 +105,15 @@ export const fetchOperarios = async (): Promise<Operario[]> => {
           nombre_completo: `${d.nombres || d.nombre || ''} ${d.apellidos || ''}`.trim(),
           telefono: d.telefono || '',
           rol: d.cargo || d.rol || 'Operario',
-          sucursal: d.sucursal || 'Principal',
+          sucursal: d.sucursal || 'Las Flores',
           estado: d.estado || (d.activo ? 'ACTIVO' : 'INACTIVO'),
           sueldo_por_servicio: Number(d.sueldo_por_servicio) || 0,
           en_capacitacion: Boolean(d.en_capacitacion),
-          color: d.color || '#0284c7'
+          color: d.color || '#00CED1'
         }));
       }
     } catch (e) {
-      console.warn('Fallo leyendo segundo Supabase de operarios, usando local:', e);
+      console.warn('Error cargando operarios de Supabase, usando local:', e);
     }
   }
 
@@ -107,27 +121,29 @@ export const fetchOperarios = async (): Promise<Operario[]> => {
 };
 
 export const fetchOperariosActivos = async (): Promise<Operario[]> => {
-  const all = await fetchOperarios();
-  return all.filter(o => o.estado === 'ACTIVO');
+  const list = await fetchOperarios();
+  return list.filter(o => o.estado === 'ACTIVO');
 };
 
-export const saveOperarioToSupabase = async (operario: Partial<Operario>): Promise<Operario> => {
+export const saveOperario = async (operario: Partial<Operario>): Promise<Operario> => {
   const supa = getOperatorsSupabase();
+  const dbPayload = {
+    dni: operario.dni || '',
+    nombres: operario.nombres || '',
+    apellidos: operario.apellidos || '',
+    nombre: `${operario.nombres || ''} ${operario.apellidos || ''}`.trim(),
+    telefono: operario.telefono || '',
+    cargo: operario.rol || 'Operario',
+    rol: operario.rol || 'Operario',
+    sucursal: operario.sucursal || 'Las Flores',
+    estado: operario.estado || 'ACTIVO',
+    sueldo_por_servicio: Number(operario.sueldo_por_servicio) || 0,
+    en_capacitacion: Boolean(operario.en_capacitacion),
+    color: operario.color || '#00CED1'
+  };
+
   if (supa) {
     try {
-      const dbPayload = {
-        dni: operario.dni || null,
-        nombres: operario.nombres || '',
-        apellidos: operario.apellidos || '',
-        telefono: operario.telefono || '',
-        rol: operario.rol || 'Operario',
-        sucursal: operario.sucursal || 'Principal',
-        estado: operario.estado || 'ACTIVO',
-        sueldo_por_servicio: operario.sueldo_por_servicio || 0,
-        en_capacitacion: Boolean(operario.en_capacitacion),
-        color: operario.color || '#0284c7'
-      };
-
       if (operario.id && !operario.id.startsWith('op-')) {
         const { data, error } = await supa
           .from('operarios')
@@ -169,11 +185,11 @@ export const saveOperarioToSupabase = async (operario: Partial<Operario>): Promi
       nombre_completo: `${operario.nombres || ''} ${operario.apellidos || ''}`.trim(),
       telefono: operario.telefono || '',
       rol: operario.rol || 'Operario',
-      sucursal: operario.sucursal || 'Principal',
+      sucursal: operario.sucursal || 'Las Flores',
       estado: operario.estado || 'ACTIVO',
       sueldo_por_servicio: operario.sueldo_por_servicio || 0,
       en_capacitacion: Boolean(operario.en_capacitacion),
-      color: operario.color || '#0284c7'
+      color: operario.color || '#00CED1'
     };
     list.push(saved);
   }
@@ -181,3 +197,19 @@ export const saveOperarioToSupabase = async (operario: Partial<Operario>): Promi
   return saved;
 };
 
+export const saveOperarioToSupabase = saveOperario;
+
+export const deleteOperario = async (id: string): Promise<void> => {
+  const supa = getOperatorsSupabase();
+  if (supa && !id.startsWith('op-')) {
+    try {
+      await supa.from('operarios').delete().eq('id', id);
+    } catch (e) {
+      console.warn('Error eliminando operario en Supabase:', e);
+    }
+  }
+
+  const list = getLocalOperators();
+  const filtered = list.filter(o => o.id !== id);
+  setLocalOperators(filtered);
+};

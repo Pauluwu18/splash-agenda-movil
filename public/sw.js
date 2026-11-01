@@ -1,18 +1,7 @@
-// Service Worker para SPLASH Agenda Mobile (Solo recursos estáticos)
-const CACHE_NAME = 'splash-static-v1';
-const STATIC_ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  './favicon.svg'
-];
+// Service Worker para SUMAQ Agenda (Network-first para evitar pantallas en negro por cache viejo)
+const CACHE_NAME = 'sumaq-cache-v2';
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    })
-  );
   self.skipWaiting();
 });
 
@@ -20,37 +9,38 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys.map((key) => caches.delete(key))
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // NO interceptar ni cachear peticiones de Supabase ni APIs (seguridad de datos de clientes)
+  // NO interceptar peticiones de Supabase ni APIs
   if (url.hostname.includes('supabase.co') || url.pathname.includes('/rest/v1')) {
     return;
   }
 
-  // Solo cachear archivos estáticos del mismo origen
-  if (event.request.method === 'GET' && url.origin === self.location.origin) {
+  // Network-first para index.html y navegación
+  if (event.request.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname.endsWith('/')) {
     event.respondWith(
-      caches.match(event.request).then((cached) => {
-        return cached || fetch(event.request).then((response) => {
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-          return response;
-        });
-      })
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Para assets JS y CSS, buscar en red primero y fallback a cache
+  if (event.request.method === 'GET') {
+    event.respondWith(
+      fetch(event.request).then((response) => {
+        if (response && response.status === 200) {
+          const respClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, respClone));
+        }
+        return response;
+      }).catch(() => caches.match(event.request))
     );
   }
 });
-

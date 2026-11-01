@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  X, MessageSquare, Send, Copy, Check, Users, User, Share2 
+  X, MessageSquare, Send, Copy, Check, Users, User, Share2, PhoneCall 
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { ServicioAgenda } from '../../types';
@@ -21,6 +21,7 @@ export const WhatsAppSummary: React.FC<WhatsAppSummaryProps> = ({
 }) => {
   const [tab, setTab] = useState<'cliente' | 'operario'>('cliente');
   const [copiado, setCopiado] = useState(false);
+  const [numeroPersonalizado, setNumeroPersonalizado] = useState('');
 
   const mensajeCliente = generarMensajeWhatsAppCliente(servicio);
   const mensajeOperario = generarOrdenWhatsAppOperario(servicio);
@@ -34,7 +35,23 @@ export const WhatsAppSummary: React.FC<WhatsAppSummaryProps> = ({
   };
 
   const handleEnviarWhatsApp = (telefonoDestino: string) => {
+    if (!telefonoDestino.trim()) return;
     abrirWhatsApp(telefonoDestino, textoActual);
+  };
+
+  const handleCompartirNativo = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `SUMAQ - ${servicio.cliente_nombre}`,
+          text: textoActual
+        });
+      } catch (e) {
+        console.log('Share cancelado o no soportado');
+      }
+    } else {
+      handleCopiar();
+    }
   };
 
   return (
@@ -47,9 +64,9 @@ export const WhatsAppSummary: React.FC<WhatsAppSummaryProps> = ({
               <MessageSquare className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-extrabold text-[#F0F4F8] text-sm">Resumen WhatsApp</h3>
+              <h3 className="font-extrabold text-[#F0F4F8] text-sm">Compartir por WhatsApp</h3>
               <p className="text-[11px] text-[#8A9BB0] truncate max-w-[220px]">
-                {servicio.cliente_nombre}
+                {servicio.cliente_nombre} • {servicio.distrito}
               </p>
             </div>
           </div>
@@ -72,7 +89,7 @@ export const WhatsAppSummary: React.FC<WhatsAppSummaryProps> = ({
             }`}
           >
             <User className="w-3.5 h-3.5" />
-            <span>Confirmación Cliente</span>
+            <span>Plantilla Cliente</span>
           </button>
 
           <button
@@ -84,55 +101,90 @@ export const WhatsAppSummary: React.FC<WhatsAppSummaryProps> = ({
             }`}
           >
             <Users className="w-3.5 h-3.5" />
-            <span>Orden Personal</span>
+            <span>Plantilla Operario</span>
           </button>
         </div>
 
         {/* Vista previa del mensaje */}
         <div className="p-4 overflow-y-auto space-y-4">
-          <div className="bg-[#0A0E11] border border-[#252D38] rounded-2xl p-3.5 text-xs font-mono text-[#F0F4F8] whitespace-pre-wrap leading-relaxed shadow-inner">
+          <div className="bg-[#0A0E11] border border-[#252D38] rounded-2xl p-3.5 text-xs font-mono text-[#F0F4F8] whitespace-pre-wrap leading-relaxed shadow-inner select-all">
             {textoActual}
           </div>
 
-          {/* Botones directos de envío */}
-          <div className="space-y-2">
-            {tab === 'cliente' ? (
-              <button
-                type="button"
-                onClick={() => handleEnviarWhatsApp(servicio.telefono)}
-                className="w-full py-3.5 px-4 bg-emerald-500 hover:bg-emerald-600 active:scale-98 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 transition cursor-pointer"
-              >
-                <Send className="w-4 h-4" />
-                <span>Enviar al WhatsApp del Cliente ({servicio.telefono})</span>
-              </button>
-            ) : (
-              <div className="space-y-2">
-                <span className="text-[11px] font-bold text-[#8A9BB0] block">
-                  Enviar orden al personal asignado:
-                </span>
-                {servicio.operarios && servicio.operarios.length > 0 ? (
-                  servicio.operarios.map(op => (
-                    <button
-                      key={op.id}
-                      type="button"
-                      onClick={() => handleEnviarWhatsApp(op.telefono || '')}
-                      className="w-full py-2.5 px-3 bg-[#1E2530] hover:bg-[#252D38] border border-[#2E3847] text-[#F0F4F8] text-xs font-bold rounded-xl flex items-center justify-between transition"
-                    >
-                      <span>📲 {op.nombres || op.nombre_completo}</span>
-                      <span className="text-[10px] text-[#00CED1] font-semibold">
-                        {op.telefono || 'Sin teléfono'}
-                      </span>
-                    </button>
-                  ))
-                ) : (
-                  <p className="text-xs text-amber-400 bg-amber-950/40 p-2.5 rounded-xl border border-amber-800">
-                    ⚠️ No hay operarios asignados a este servicio aún.
-                  </p>
-                )}
+          {/* Opciones para escoger a qué número enviar */}
+          <div className="space-y-3">
+            {/* 1. Enviar a número personalizado */}
+            <div className="bg-[#111418] p-3 rounded-2xl border border-[#252D38] space-y-2">
+              <span className="text-[10px] font-bold text-[#8A9BB0] block">
+                Enviar a cualquier número de WhatsApp / Contacto:
+              </span>
+              <div className="flex gap-2">
+                <input
+                  type="tel"
+                  placeholder="Ej. 987654321"
+                  value={numeroPersonalizado}
+                  onChange={(e) => setNumeroPersonalizado(e.target.value.replace(/\D/g, ''))}
+                  className="flex-1 px-3 py-2 text-xs font-bold bg-[#181D22] border border-[#2E3847] rounded-xl text-[#F0F4F8] placeholder-[#4A5A70] focus:ring-1 focus:ring-[#00CED1] focus:outline-none"
+                />
+                <button
+                  type="button"
+                  disabled={numeroPersonalizado.length < 8}
+                  onClick={() => handleEnviarWhatsApp(numeroPersonalizado)}
+                  className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 active:scale-95 text-slate-950 font-black text-xs rounded-xl flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Enviar</span>
+                </button>
               </div>
-            )}
+            </div>
 
-            {/* Copiar texto */}
+            {/* 2. Enviar directo a contactos predefinidos */}
+            <div className="space-y-1.5">
+              {/* Botón Cliente */}
+              {servicio.telefono && (
+                <button
+                  type="button"
+                  onClick={() => handleEnviarWhatsApp(servicio.telefono)}
+                  className="w-full py-2.5 px-3 bg-[#181D22] hover:bg-[#1E2530] border border-[#2E3847] rounded-xl text-[#F0F4F8] text-xs font-bold flex items-center justify-between transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <User className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>WhatsApp Cliente ({servicio.cliente_nombre})</span>
+                  </span>
+                  <span className="text-[11px] text-[#00CED1] font-mono">{servicio.telefono}</span>
+                </button>
+              )}
+
+              {/* Botones Operarios */}
+              {servicio.operarios && servicio.operarios.length > 0 && (
+                servicio.operarios.map(op => (
+                  <button
+                    key={op.id}
+                    type="button"
+                    onClick={() => handleEnviarWhatsApp(op.telefono || '')}
+                    className="w-full py-2.5 px-3 bg-[#181D22] hover:bg-[#1E2530] border border-[#2E3847] rounded-xl text-[#F0F4F8] text-xs font-bold flex items-center justify-between transition cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Users className="w-3.5 h-3.5 text-[#00CED1]" />
+                      <span>WhatsApp Operario ({op.nombres || op.nombre_completo})</span>
+                    </span>
+                    <span className="text-[11px] text-[#00CED1] font-mono">{op.telefono || 'Sin teléfono'}</span>
+                  </button>
+                ))
+              )}
+            </div>
+
+            {/* 3. Compartir con el selector nativo de WhatsApp del teléfono */}
+            <button
+              type="button"
+              onClick={handleCompartirNativo}
+              className="w-full py-3 bg-[#00CED1] hover:brightness-110 active:scale-98 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-md shadow-[#00CED1]/25 transition cursor-pointer"
+            >
+              <Share2 className="w-4 h-4 stroke-[2.5]" />
+              <span>Elegir contacto o grupo en WhatsApp...</span>
+            </button>
+
+            {/* 4. Copiar texto */}
             <button
               type="button"
               onClick={handleCopiar}
@@ -157,4 +209,3 @@ export const WhatsAppSummary: React.FC<WhatsAppSummaryProps> = ({
     </div>
   );
 };
-

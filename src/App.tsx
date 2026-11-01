@@ -4,7 +4,7 @@ import { BottomNav, NavigationTab } from './components/ui/BottomNav';
 import { AgendaView } from './modules/agenda/AgendaView';
 import { CreateServiceView } from './modules/services/CreateServiceView';
 import { PeopleView } from './modules/people/PeopleView';
-import { FleetView } from './modules/fleet/FleetView';
+import { ServicesCatalogView } from './modules/catalog/ServicesCatalogView';
 import { SettingsView } from './modules/settings/SettingsView';
 import { WhatsAppSummary } from './modules/services/WhatsAppSummary';
 import { EditServiceModal } from './modules/services/EditServiceModal';
@@ -35,10 +35,10 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0E11] text-[#F0F4F8] flex justify-center selection:bg-[#00CED1] selection:text-slate-950">
-      <div className="w-full max-w-lg min-h-screen flex flex-col relative bg-[#0A0E11] shadow-2xl border-x border-[#1E2530]">
+    <div className="min-h-screen bg-[#0A0E11] text-[#F0F4F8] flex justify-center selection:bg-[#00CED1] selection:text-slate-950 w-full overflow-x-hidden">
+      <div className="w-full max-w-full lg:max-w-6xl xl:max-w-7xl min-h-screen flex flex-col relative bg-[#0A0E11] shadow-2xl lg:border-x lg:border-[#1E2530]">
         
-        {/* Barra Superior SPLASH */}
+        {/* Barra Superior SUMAQ */}
         <Header
           onRefresh={() => {
             setRefreshKey(prev => prev + 1);
@@ -55,7 +55,7 @@ export default function App() {
         )}
 
         {/* Contenido Principal por Módulo */}
-        <main className="flex-1">
+        <main className="flex-1 w-full">
           {activeTab === 'agenda' && (
             <AgendaView
               key={refreshKey}
@@ -63,6 +63,10 @@ export default function App() {
               onShareService={(svc) => setSharingService(svc)}
               onEditService={(svc) => setEditingService(svc)}
             />
+          )}
+
+          {activeTab === 'servicios' && (
+            <ServicesCatalogView />
           )}
 
           {activeTab === 'crear' && (
@@ -74,10 +78,6 @@ export default function App() {
 
           {activeTab === 'personas' && (
             <PeopleView />
-          )}
-
-          {activeTab === 'flota' && (
-            <FleetView />
           )}
 
           {activeTab === 'ajustes' && (
@@ -116,4 +116,3 @@ export default function App() {
     </div>
   );
 }
-

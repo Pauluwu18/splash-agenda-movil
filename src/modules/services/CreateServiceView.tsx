@@ -14,7 +14,8 @@ import {
   buscarClientePorTelefono,
   EMPRESAS_DEFAULT, 
   CANALES_DEFAULT, 
-  CATALOGO_DEFAULT, 
+  CATALOGO_DEFAULT,
+  getCatalogoPersonalizado, 
   VANS_DEFAULT, 
   DISTRITOS_LIMA 
 } from '../../integrations/supabase-main/services';
@@ -36,6 +37,10 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
   onSuccess,
   onCancel
 }) => {
+  const catalogo = useMemo(() => getCatalogoPersonalizado(), []);
+  const primerCat = catalogo[0] || CATALOGO_DEFAULT[0];
+  const primerSub = primerCat?.subcategorias?.[0] || { id: "sub-custom", nombre: "Servicio", tipo_medida: "unidad", precio_sugerido: 100 };
+
   // 1. Programación
   const [fecha, setFecha] = useState<string>(getTodayKey());
   const [horario, setHorario] = useState<TurnoHorario>('Mañana');
@@ -57,13 +62,13 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
   // 4. Servicios e Ítems
   const [items, setItems] = useState<ItemServicio[]>([
     {
-      subcategoria_nombre: CATALOGO_DEFAULT[0].subcategorias[0].nombre,
-      subcategoria_id: CATALOGO_DEFAULT[0].subcategorias[0].id,
-      categoria_id: CATALOGO_DEFAULT[0].id,
-      categoria_nombre: CATALOGO_DEFAULT[0].nombre,
-      tipo_medida: CATALOGO_DEFAULT[0].subcategorias[0].tipo_medida,
+      subcategoria_nombre: primerSub.nombre,
+      subcategoria_id: primerSub.id,
+      categoria_id: primerCat?.id || "cat-general",
+      categoria_nombre: primerCat?.nombre || "General",
+      tipo_medida: primerSub.tipo_medida,
       valor_editable: 1,
-      precio: CATALOGO_DEFAULT[0].subcategorias[0].precio_sugerido
+      precio: primerSub.precio_sugerido
     }
   ]);
   const [descuento, setDescuento] = useState<string>('0');
@@ -120,12 +125,13 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
 
   // Manejo de ítems
   const handleAddItem = () => {
-    const defaultSub = CATALOGO_DEFAULT[0].subcategorias[0];
+    const curCat = catalogo[0] || CATALOGO_DEFAULT[0];
+    const defaultSub = curCat?.subcategorias?.[0] || { id: "sub-custom", nombre: "Servicio", tipo_medida: "unidad", precio_sugerido: 100 };
     setItems(prev => [
       ...prev,
       {
-        categoria_id: CATALOGO_DEFAULT[0].id,
-        categoria_nombre: CATALOGO_DEFAULT[0].nombre,
+        categoria_id: curCat?.id || "cat-general",
+        categoria_nombre: curCat?.nombre || "General",
         subcategoria_id: defaultSub.id,
         subcategoria_nombre: defaultSub.nombre,
         tipo_medida: defaultSub.tipo_medida,
@@ -197,7 +203,7 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
         cliente_nombre: clienteNombre.trim(),
         telefono: telefono.trim(),
         empresa_id: empresaId,
-        empresa_nombre: empresaActual?.nombre || 'SPLASH',
+        empresa_nombre: empresaActual?.nombre || 'SUMAQ',
         empresa_color: empresaActual?.color || '#00CED1',
         canal_origen_id: canalOrigenId,
         canal_origen_nombre: canalActual?.nombre || 'WhatsApp',
@@ -237,7 +243,7 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
   };
 
   return (
-    <div className="pb-36 max-w-lg mx-auto">
+    <div className="pb-36 max-w-2xl mx-auto">
       {/* Header móvil */}
       <div className="sticky top-0 z-20 bg-[#0A0E11]/95 backdrop-blur-md px-4 py-3.5 border-b border-[#252D38] flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -250,7 +256,7 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
           </button>
           <div>
             <h2 className="text-base font-extrabold text-[#F0F4F8]">Crear Servicio</h2>
-            <p className="text-[10px] text-[#8A9BB0]">Formulario Oficial SPLASH</p>
+            <p className="text-[10px] text-[#8A9BB0]">Formulario Oficial SUMAQ</p>
           </div>
         </div>
 
@@ -503,7 +509,7 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
                     const subId = e.target.value;
                     let foundSub: any = null;
                     let foundCat: any = null;
-                    for (const cat of CATALOGO_DEFAULT) {
+                    for (const cat of catalogo) {
                       const s = cat.subcategorias.find(x => x.id === subId);
                       if (s) {
                         foundSub = s;
@@ -524,7 +530,7 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
                   }}
                   className="w-full px-2.5 py-2 text-xs font-bold bg-[#181D22] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:outline-none"
                 >
-                  {CATALOGO_DEFAULT.map(cat => (
+                  {catalogo.map(cat => (
                     <optgroup key={cat.id} label={cat.nombre}>
                       {cat.subcategorias.map(sub => (
                         <option key={sub.id} value={sub.id}>

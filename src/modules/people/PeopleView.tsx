@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Plus, Phone, Briefcase, Shield, 
-  DollarSign, Check, X, AlertCircle, Sparkles, Building 
+  DollarSign, Check, X, AlertCircle, Sparkles, Building, Trash2 
 } from 'lucide-react';
 import { Operario } from '../../types';
-import { fetchOperarios, saveOperarioToSupabase } from '../../integrations/supabase-operators/operators';
+import { fetchOperarios, saveOperarioToSupabase, deleteOperario } from '../../integrations/supabase-operators/operators';
 import { isOperatorsSupabaseConfigured } from '../../integrations/supabase-operators/client';
 import { formatMontoSoles } from '../../utils/businessRules';
 
 const COLORES = [
-  '#0284c7', '#0d9488', '#f59e0b', '#8b5cf6', 
-  '#ec4899', '#ef4444', '#10b981', '#00CED1'
+  '#00CED1', '#0284c7', '#0d9488', '#f59e0b', 
+  '#8b5cf6', '#ec4899', '#ef4444', '#10b981'
 ];
 
 export const PeopleView: React.FC = () => {
@@ -28,7 +28,7 @@ export const PeopleView: React.FC = () => {
   const [sucursal, setSucursal] = useState<string>('Las Flores');
   const [sueldo, setSueldo] = useState<string>('25');
   const [enCapacitacion, setEnCapacitacion] = useState<boolean>(false);
-  const [color, setColor] = useState<string>('#0284c7');
+  const [color, setColor] = useState<string>('#00CED1');
   const [guardando, setGuardando] = useState<boolean>(false);
 
   const isOpsSupa = isOperatorsSupabaseConfigured();
@@ -54,7 +54,7 @@ export const PeopleView: React.FC = () => {
     setSucursal('Las Flores');
     setSueldo('25');
     setEnCapacitacion(false);
-    setColor('#0284c7');
+    setColor('#00CED1');
     setMostrarModal(true);
   };
 
@@ -68,8 +68,24 @@ export const PeopleView: React.FC = () => {
     setSucursal(op.sucursal || 'Las Flores');
     setSueldo(String(op.sueldo_por_servicio || 25));
     setEnCapacitacion(Boolean(op.en_capacitacion));
-    setColor(op.color || '#0284c7');
+    setColor(op.color || '#00CED1');
     setMostrarModal(true);
+  };
+
+  const handleEliminar = async (op: Operario, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const conf = window.confirm(`¿Estás seguro de eliminar al colaborador ${op.nombres} ${op.apellidos || ''}?`);
+    if (!conf) return;
+
+    try {
+      await deleteOperario(op.id);
+      if (editando?.id === op.id) {
+        setMostrarModal(false);
+      }
+      await cargar();
+    } catch (err) {
+      console.error('Error al eliminar operario:', err);
+    }
   };
 
   const handleGuardar = async (e: React.FormEvent) => {
@@ -93,7 +109,7 @@ export const PeopleView: React.FC = () => {
       });
 
       setMostrarModal(false);
-      cargar();
+      await cargar();
     } catch (err) {
       console.error(err);
     } finally {
@@ -102,7 +118,7 @@ export const PeopleView: React.FC = () => {
   };
 
   return (
-    <div className="pb-28 max-w-lg mx-auto">
+    <div className="pb-28 max-w-2xl mx-auto">
       {/* Header móvil */}
       <div className="sticky top-13 z-20 bg-[#0A0E11]/95 backdrop-blur-md px-4 py-3.5 border-b border-[#252D38] flex items-center justify-between">
         <div>
@@ -110,7 +126,7 @@ export const PeopleView: React.FC = () => {
             <Users className="w-4 h-4 text-[#00CED1]" />
             <span>Colaboradores / Personal</span>
           </h2>
-          <p className="text-[10px] text-[#8A9BB0]">Segundo Supabase (Operarios)</p>
+          <p className="text-[10px] text-[#8A9BB0]">Gestión de Operarios SUMAQ</p>
         </div>
 
         <button
@@ -126,11 +142,11 @@ export const PeopleView: React.FC = () => {
         {/* Banner de estado del 2do Supabase */}
         {!isOpsSupa && (
           <div className="p-3 bg-[#181D22] border border-[#2E3847] rounded-2xl flex items-center gap-3">
-            <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0 animate-pulse" />
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0 animate-pulse" />
             <div className="text-xs">
-              <span className="font-bold text-[#F0F4F8] block">Directorio de Operarios (Local)</span>
+              <span className="font-bold text-[#F0F4F8] block">Directorio de Operarios Activo</span>
               <span className="text-[11px] text-[#8A9BB0]">
-                Puedes conectar las credenciales del segundo Supabase en la pestaña <strong>Más</strong> cuando las tengas.
+                Puedes registrar, editar y eliminar operarios. Los cambios se sincronizan en tiempo real con la asignación de servicios.
               </span>
             </div>
           </div>
@@ -149,7 +165,7 @@ export const PeopleView: React.FC = () => {
             <div
               key={p.id}
               onClick={() => abrirEditar(p)}
-              className="bg-[#181D22] hover:bg-[#1E2530] rounded-2xl p-3.5 border border-[#252D38] hover:border-[#3D4E63] shadow-sm flex items-center justify-between gap-3 cursor-pointer transition active:scale-[0.99]"
+              className="bg-[#181D22] hover:bg-[#1E2530] rounded-2xl p-3.5 border border-[#252D38] hover:border-[#3D4E63] shadow-sm flex items-center justify-between gap-3 cursor-pointer transition active:scale-[0.99] group"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div
@@ -189,11 +205,22 @@ export const PeopleView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="text-right shrink-0">
-                <span className="text-[10px] text-[#8A9BB0] block">Sueldo / svc</span>
-                <span className="text-xs font-black text-emerald-400">
-                  S/ {formatMontoSoles(p.sueldo_por_servicio || 0)}
-                </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="text-right">
+                  <span className="text-[10px] text-[#8A9BB0] block">Sueldo / svc</span>
+                  <span className="text-xs font-black text-emerald-400">
+                    S/ {formatMontoSoles(p.sueldo_por_servicio || 0)}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => handleEliminar(p, e)}
+                  className="p-2 text-[#4A5A70] hover:text-rose-400 hover:bg-rose-950/40 rounded-xl transition ml-1"
+                  title="Eliminar colaborador"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           ))
@@ -338,6 +365,20 @@ export const PeopleView: React.FC = () => {
                 </div>
               </div>
 
+              {/* Botón de eliminar si está editando */}
+              {editando && (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleEliminar(editando)}
+                    className="w-full py-2 bg-rose-950/40 hover:bg-rose-950/80 text-rose-400 border border-rose-800/60 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Eliminar Colaborador</span>
+                  </button>
+                </div>
+              )}
+
               <div className="pt-2 flex gap-2">
                 <button
                   type="button"
@@ -361,4 +402,3 @@ export const PeopleView: React.FC = () => {
     </div>
   );
 };
-
