@@ -57,3 +57,4 @@ export const exportarAgendaExcel = (servicios: ServicioAgenda[], fechaStr: strin
   const cleanDate = fechaStr.replace(/-/g, '');
   XLSX.writeFile(workbook, `SPLASH_Agenda_${cleanDate}.xlsx`);
 };
+

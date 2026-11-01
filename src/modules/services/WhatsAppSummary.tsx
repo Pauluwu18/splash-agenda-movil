@@ -157,3 +157,4 @@ export const WhatsAppSummary: React.FC<WhatsAppSummaryProps> = ({
     </div>
   );
 };
+

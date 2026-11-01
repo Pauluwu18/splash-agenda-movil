@@ -275,3 +275,4 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
     </div>
   );
 };
+

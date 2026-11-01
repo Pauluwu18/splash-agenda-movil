@@ -22,6 +22,7 @@ export const EditServiceModal: React.FC<EditServiceModalProps> = ({
   const [horario, setHorario] = useState<TurnoHorario>(servicio.horario);
   const [horaEstimada, setHoraEstimada] = useState<string>(servicio.hora_estimada || '');
   const [direccion, setDireccion] = useState<string>(servicio.direccion);
+  const [linkMaps, setLinkMaps] = useState<string>(servicio.link_maps || '');
   const [precioFinal, setPrecioFinal] = useState<string>(String(servicio.precio_final));
   const [comentarios, setComentarios] = useState<string>(servicio.comentarios || '');
   const [esTaxi, setEsTaxi] = useState<boolean>(servicio.es_taxi);
@@ -58,6 +59,7 @@ export const EditServiceModal: React.FC<EditServiceModalProps> = ({
         horario,
         hora_estimada: horaEstimada,
         direccion: direccion.trim(),
+        link_maps: linkMaps.trim(),
         precio_final: esRectificacion ? 0 : (Number(precioFinal) || 0),
         es_rectificacion: esRectificacion,
         es_taxi: esTaxi,
@@ -158,15 +160,32 @@ export const EditServiceModal: React.FC<EditServiceModalProps> = ({
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-[#8A9BB0]">Hora Estimada:</label>
               <select
-                value={horaEstimada}
-                onChange={(e) => setHoraEstimada(e.target.value)}
-                className="w-full px-2.5 py-2 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#00CED1]"
+                value={HORAS_POR_TURNO[horario].includes(horaEstimada) ? horaEstimada : ''}
+                onChange={(e) => {
+                  if (e.target.value) setHoraEstimada(e.target.value);
+                }}
+                className="w-full px-2 py-2 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#00CED1]"
               >
                 {HORAS_POR_TURNO[horario].map(h => (
                   <option key={h} value={h}>{h}</option>
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Input manual de hora de llegada */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-[#8A9BB0] flex items-center gap-1">
+              <Clock className="w-3 h-3 text-[#00CED1]" />
+              <span>Hora / Rango de Llegada (editable):</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Ej. 1:30pm - 2:30pm Aprox"
+              value={horaEstimada}
+              onChange={(e) => setHoraEstimada(e.target.value)}
+              className="w-full px-3 py-2 text-xs bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:outline-none"
+            />
           </div>
 
           {/* Dirección */}
@@ -181,6 +200,18 @@ export const EditServiceModal: React.FC<EditServiceModalProps> = ({
               value={direccion}
               onChange={(e) => setDireccion(e.target.value)}
               className="w-full px-3 py-2 text-xs bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:outline-none"
+            />
+          </div>
+
+          {/* Link de Google Maps / GPS */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-[#8A9BB0]">Link Google Maps (opcional):</label>
+            <input
+              type="url"
+              placeholder="https://maps.app.goo.gl/... o https://maps.google.com/..."
+              value={linkMaps}
+              onChange={(e) => setLinkMaps(e.target.value)}
+              className="w-full px-3 py-2 text-xs bg-[#111418] border border-[#252D38] rounded-xl text-[#F0F4F8] focus:outline-none"
             />
           </div>
 
@@ -263,3 +294,4 @@ export const EditServiceModal: React.FC<EditServiceModalProps> = ({
     </div>
   );
 };
+

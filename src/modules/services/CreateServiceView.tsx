@@ -39,19 +39,20 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
   // 1. Programación
   const [fecha, setFecha] = useState<string>(getTodayKey());
   const [horario, setHorario] = useState<TurnoHorario>('Mañana');
-  const [horaEstimada, setHoraEstimada] = useState<string>('09:00 AM');
+  const [horaEstimada, setHoraEstimada] = useState<string>('8:30am - 9:30am Aprox');
 
   // 2. Cliente
   const [telefono, setTelefono] = useState<string>('');
   const [clienteNombre, setClienteNombre] = useState<string>('');
   const [clienteEncontrado, setClienteEncontrado] = useState<boolean>(false);
-  const [empresaId, setEmpresaId] = useState<string>(EMPRESAS_DEFAULT[0].id);
-  const [canalOrigenId, setCanalOrigenId] = useState<string>(CANALES_DEFAULT[0].id);
+  const [empresaId] = useState<string>(EMPRESAS_DEFAULT[0].id);
+  const [canalOrigenId] = useState<string>(CANALES_DEFAULT[0].id);
 
   // 3. Ubicación
   const [distrito, setDistrito] = useState<string>('Santiago de Surco');
   const [direccion, setDireccion] = useState<string>('');
   const [referencia, setReferencia] = useState<string>('');
+  const [linkMaps, setLinkMaps] = useState<string>('');
 
   // 4. Servicios e Ítems
   const [items, setItems] = useState<ItemServicio[]>([
@@ -203,6 +204,7 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
         distrito,
         direccion: direccion.trim(),
         referencia: referencia.trim(),
+        link_maps: linkMaps.trim(),
         fecha,
         horario,
         hora_estimada: horaEstimada,
@@ -265,11 +267,11 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
           </div>
         )}
 
-        {/* 1. SECCIÓN CLIENTE & EMPRESA */}
+        {/* 1. SECCIÓN CLIENTE */}
         <div className="bg-[#181D22] p-4 rounded-2xl border border-[#252D38] space-y-3">
           <label className="text-[11px] font-black uppercase tracking-wider text-[#00CED1] flex items-center gap-1.5">
             <User className="w-3.5 h-3.5" />
-            <span>1. Cliente y Empresa</span>
+            <span>1. Datos del Cliente</span>
           </label>
 
           {/* Teléfono móvil */}
@@ -298,42 +300,6 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
             onChange={(e) => setClienteNombre(e.target.value)}
             className="w-full px-3 py-2.5 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] placeholder-[#4A5A70] focus:ring-1 focus:ring-[#00CED1] focus:outline-none"
           />
-
-          {/* Selección de Empresa / Marca (Multi-brand SPLASH) */}
-          <div className="space-y-1.5 pt-1">
-            <span className="text-[10px] font-bold text-[#8A9BB0]">Empresa / Marca:</span>
-            <div className="grid grid-cols-2 gap-1.5">
-              {EMPRESAS_DEFAULT.map(emp => (
-                <button
-                  key={emp.id}
-                  type="button"
-                  onClick={() => setEmpresaId(emp.id)}
-                  className={`py-2 px-2.5 text-[11px] font-bold rounded-xl border flex items-center gap-1.5 transition ${
-                    empresaId === emp.id
-                      ? 'border-[#00CED1] bg-[#00CED1]/15 text-[#F0F4F8]'
-                      : 'border-[#252D38] bg-[#111418] text-[#8A9BB0] hover:bg-[#1E2530]'
-                  }`}
-                >
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: emp.color }} />
-                  <span className="truncate">{emp.nombre}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Canal de Origen */}
-          <div className="space-y-1 pt-1">
-            <span className="text-[10px] font-bold text-[#8A9BB0]">Canal de Origen:</span>
-            <select
-              value={canalOrigenId}
-              onChange={(e) => setCanalOrigenId(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-semibold bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:ring-1 focus:ring-[#00CED1] focus:outline-none"
-            >
-              {CANALES_DEFAULT.map(c => (
-                <option key={c.id} value={c.id}>{c.nombre}</option>
-              ))}
-            </select>
-          </div>
         </div>
 
         {/* 2. SECCIÓN UBICACIÓN */}
@@ -372,6 +338,15 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
             placeholder="Referencia (opcional, ej. Frente al parque)"
             value={referencia}
             onChange={(e) => setReferencia(e.target.value)}
+            className="w-full px-3 py-2 text-xs bg-[#111418] border border-[#252D38] rounded-xl text-[#F0F4F8] placeholder-[#4A5A70] focus:ring-1 focus:ring-[#00CED1] focus:outline-none"
+          />
+
+          {/* Link de Google Maps / GPS */}
+          <input
+            type="url"
+            placeholder="Link de Google Maps / GPS (opcional, ej. https://maps.app.goo.gl/...)"
+            value={linkMaps}
+            onChange={(e) => setLinkMaps(e.target.value)}
             className="w-full px-3 py-2 text-xs bg-[#111418] border border-[#252D38] rounded-xl text-[#F0F4F8] placeholder-[#4A5A70] focus:ring-1 focus:ring-[#00CED1] focus:outline-none"
           />
         </div>
@@ -423,7 +398,11 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
               <button
                 key={t}
                 type="button"
-                onClick={() => setHorario(t)}
+                onClick={() => {
+                  setHorario(t);
+                  const firstHour = HORAS_POR_TURNO[t]?.[0];
+                  if (firstHour) setHoraEstimada(firstHour);
+                }}
                 className={`py-2 px-2 text-xs font-black rounded-xl border transition flex items-center justify-center gap-1 ${
                   horario === t
                     ? 'bg-[#1E2530] text-[#00CED1] border-[#00CED1]'
@@ -437,20 +416,32 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
           </div>
 
           {/* Hora Estimada de Llegada */}
-          <div className="space-y-1 pt-1">
+          <div className="space-y-1.5 pt-1">
             <span className="text-[10px] font-bold text-[#8A9BB0] flex items-center gap-1">
               <Clock className="w-3 h-3 text-[#00CED1]" />
-              <span>Hora estimada de llegada:</span>
+              <span>Hora de llegada estimada:</span>
             </span>
-            <select
-              value={horaEstimada}
-              onChange={(e) => setHoraEstimada(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#00CED1] focus:ring-1 focus:ring-[#00CED1] focus:outline-none"
-            >
-              {HORAS_POR_TURNO[horario].map(h => (
-                <option key={h} value={h}>{h}</option>
-              ))}
-            </select>
+            <div className="space-y-1.5">
+              <select
+                value={HORAS_POR_TURNO[horario].includes(horaEstimada) ? horaEstimada : ''}
+                onChange={(e) => {
+                  if (e.target.value) setHoraEstimada(e.target.value);
+                }}
+                className="w-full px-3 py-2 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#00CED1] focus:ring-1 focus:ring-[#00CED1] focus:outline-none"
+              >
+                {HORAS_POR_TURNO[horario].map(h => (
+                  <option key={h} value={h}>{h}</option>
+                ))}
+              </select>
+
+              <input
+                type="text"
+                placeholder="O escribir rango manual (ej. 1:30pm - 2:30pm Aprox)"
+                value={horaEstimada}
+                onChange={(e) => setHoraEstimada(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs font-medium bg-[#111418] border border-[#252D38] rounded-xl text-[#F0F4F8] placeholder-[#4A5A70] focus:ring-1 focus:ring-[#00CED1] focus:outline-none"
+              />
+            </div>
           </div>
 
           {/* Advertencia de regla de corte 18:00 */}
@@ -775,3 +766,4 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
     </div>
   );
 };
+

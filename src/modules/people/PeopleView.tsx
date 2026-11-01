@@ -361,3 +361,4 @@ export const PeopleView: React.FC = () => {
     </div>
   );
 };
+

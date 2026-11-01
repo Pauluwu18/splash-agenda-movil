@@ -180,3 +180,4 @@ export const saveOperarioToSupabase = async (operario: Partial<Operario>): Promi
   setLocalOperators(list);
   return saved;
 };
+

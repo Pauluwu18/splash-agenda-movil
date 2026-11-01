@@ -64,3 +64,4 @@ export const saveMainSupabaseCredentials = (url: string, key: string) => {
   }
   return initMainSupabase(url, key);
 };
+

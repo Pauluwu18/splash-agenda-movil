@@ -190,6 +190,7 @@ export const saveServicioAgenda = async (
     distrito: servicioData.distrito,
     direccion: servicioData.direccion,
     referencia: servicioData.referencia || '',
+    link_maps: servicioData.link_maps || '',
     fecha: servicioData.fecha,
     horario: servicioData.horario,
     hora_estimada: servicioData.hora_estimada || '',
@@ -325,3 +326,4 @@ const saveClienteRecord = async (cliente: Partial<Cliente>) => {
   }
   localStorage.setItem('splash_clientes_local', JSON.stringify(clientes));
 };
+

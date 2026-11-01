@@ -27,6 +27,7 @@ export interface ServicioAgenda {
   distrito: string;
   direccion: string;
   referencia?: string;
+  link_maps?: string;
   fecha: string; // 'YYYY-MM-DD'
   horario: TurnoHorario;
   hora_estimada?: string; // ej. '09:30 AM'
@@ -121,3 +122,4 @@ export interface Sucursal {
   nombre: string;
   distritos_cobertura?: string[];
 }
+

@@ -64,3 +64,4 @@ export const clearOperatorsSupabaseCredentials = () => {
   localStorage.removeItem('splash_supa_ops_key');
   operatorsClient = null;
 };
+
