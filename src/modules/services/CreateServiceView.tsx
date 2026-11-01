@@ -16,6 +16,7 @@ import {
   CANALES_DEFAULT, 
   CATALOGO_DEFAULT,
   getCatalogoPersonalizado, 
+  getVansPersonalizadas,
   VANS_DEFAULT, 
   DISTRITOS_LIMA 
 } from '../../integrations/supabase-main/services';
@@ -189,7 +190,7 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
     try {
       const empresaActual = EMPRESAS_DEFAULT.find(e => e.id === empresaId);
       const canalActual = CANALES_DEFAULT.find(c => c.id === canalOrigenId);
-      const vanActual = VANS_DEFAULT.find(v => v.id === vehiculoId);
+      const esTaxi = movilidad.toUpperCase().includes('TAXI');
 
       // Resumen del detalle concatenado
       const detalleTexto = items.map(it => {
@@ -683,45 +684,35 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
           </div>
         </div>
 
-        {/* 7. SECCIÓN FLOTA / MOVILIDAD */}
+                {/* 7. SECCIÓN FLOTA / MOVILIDAD */}
         <div className="bg-[#181D22] p-4 rounded-2xl border border-[#252D38] space-y-3">
           <label className="text-[11px] font-black uppercase tracking-wider text-[#00CED1] flex items-center gap-1.5">
             <Truck className="w-3.5 h-3.5" />
-            <span>7. Movilidad (Van o Taxi)</span>
+            <span>7. Movilidad (Taxi o Van)</span>
           </label>
 
-          <div className="flex items-center justify-between pb-1">
-            <label className="text-xs text-[#F0F4F8] font-bold flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={esTaxi}
-                onChange={(e) => setEsTaxi(e.target.checked)}
-                className="w-4 h-4 rounded text-amber-500 bg-[#111418] border-[#2E3847]"
-              />
-              <span>Traslado en TAXI (sin furgoneta)</span>
-            </label>
-            {esTaxi && (
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 border border-amber-800">
-                TAXI
-              </span>
-            )}
-          </div>
-
-          {!esTaxi && (
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-[#8A9BB0]">Asignar Van de la flota:</span>
-              <select
-                value={vehiculoId}
-                onChange={(e) => setVehiculoId(e.target.value)}
-                className="w-full px-3 py-2 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:outline-none"
-              >
-                <option value="">-- Sin van asignada aún --</option>
-                {VANS_DEFAULT.map(v => (
-                  <option key={v.id} value={v.id}>{v.nombre} ({v.placa})</option>
+          <div className="space-y-1.5">
+            <select
+              value={movilidad}
+              onChange={(e) => setMovilidad(e.target.value)}
+              className="w-full px-3 py-2.5 text-xs font-black bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:border-[#00CED1] focus:outline-none cursor-pointer"
+            >
+              <option value="">-- Sin movilidad asignada aún --</option>
+              <optgroup label="Taxis (1 al 5)">
+                <option value="TAXI 1">TAXI 1</option>
+                <option value="TAXI 2">TAXI 2</option>
+                <option value="TAXI 3">TAXI 3</option>
+                <option value="TAXI 4">TAXI 4</option>
+                <option value="TAXI 5">TAXI 5</option>
+              </optgroup>
+              <optgroup label="Vans de la flota (Choferes)">
+                {vans.map(v => (
+                  <option key={v.id} value={v.nombre}>{v.nombre}</option>
                 ))}
-              </select>
-            </div>
-          )}
+              </optgroup>
+              <option value="Sin movilidad">Sin movilidad</option>
+            </select>
+          </div>
         </div>
 
         {/* 8. SECCIÓN OBSERVACIONES */}

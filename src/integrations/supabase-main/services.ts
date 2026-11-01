@@ -24,13 +24,13 @@ export const CANALES_DEFAULT: CanalOrigen[] = [
   { id: 'can-5', nombre: 'Recomendación / Referido', activo: true }
 ];
 
-export const VANS_DEFAULT: Vehiculo[] = [
-  { id: 'van-taxi1', nombre: 'TAXI 1', placa: 'TAXI-01', estado: 'ACTIVO' },
-  { id: 'van-taxi2', nombre: 'TAXI 2', placa: 'TAXI-02', estado: 'ACTIVO' },
-  { id: 'van-1', nombre: 'Van 01 (Las Flores)', placa: 'ABC-123', estado: 'ACTIVO' },
-  { id: 'van-2', nombre: 'Van 02 (Surco)', placa: 'DEF-456', estado: 'ACTIVO' },
-  { id: 'van-sin', nombre: 'Sin movilidad', placa: '', estado: 'ACTIVO' }
+export const TAXIS_DEFAULT = ['TAXI 1', 'TAXI 2', 'TAXI 3', 'TAXI 4', 'TAXI 5'];
+
+export const DEFAULT_VANS: Vehiculo[] = [
+  { id: 'van-manuel', nombre: 'VAN Manuel', placa: '', estado: 'ACTIVO' }
 ];
+
+export const VANS_DEFAULT: Vehiculo[] = DEFAULT_VANS;
 
 export const CATALOGO_DEFAULT: CategoriaCatalogo[] = [
   {
@@ -135,6 +135,53 @@ export const addServicioToCatalog = (categoriaNombre: string, subcategoriaNombre
   });
   saveCatalogoPersonalizado(cats);
   return cats;
+};
+
+
+// =========================================================================
+// GESTIÓN DE VANS PERSONALIZADAS EN LOCAL Y SUPABASE
+// =========================================================================
+export const getVansPersonalizadas = (): Vehiculo[] => {
+  try {
+    const raw = localStorage.getItem('sumaq_vans_personalizadas');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return DEFAULT_VANS;
+};
+
+export const saveVansPersonalizadas = (vans: Vehiculo[]) => {
+  try {
+    localStorage.setItem('sumaq_vans_personalizadas', JSON.stringify(vans));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sumaq_servicios_changed', { detail: { time: Date.now() } }));
+    }
+  } catch {}
+};
+
+export const addVanToFlota = (nombreChofer: string): Vehiculo[] => {
+  let clean = nombreChofer.trim();
+  if (!clean.toUpperCase().startsWith('VAN')) {
+    clean = `VAN ${clean}`;
+  }
+  const vans = getVansPersonalizadas();
+  const newVan: Vehiculo = {
+    id: `van-${Date.now()}`,
+    nombre: clean,
+    placa: '',
+    estado: 'ACTIVO'
+  };
+  const updated = [...vans, newVan];
+  saveVansPersonalizadas(updated);
+  return updated;
+};
+
+export const deleteVanFromFlota = (vanId: string): Vehiculo[] => {
+  const vans = getVansPersonalizadas().filter(v => v.id !== vanId);
+  saveVansPersonalizadas(vans);
+  return vans;
 };
 
 export const deleteServicioFromCatalog = (subcategoriaId: string) => {

@@ -4,7 +4,7 @@ import {
   Save, AlertTriangle, Truck, Sparkles 
 } from 'lucide-react';
 import { ServicioAgenda, TurnoHorario, Vehiculo } from '../../types';
-import { updateServicio, VANS_DEFAULT } from '../../integrations/supabase-main/services';
+import { updateServicio, getVansPersonalizadas, VANS_DEFAULT } from '../../integrations/supabase-main/services';
 import { HORAS_POR_TURNO } from '../../utils/businessRules';
 
 interface EditServiceModalProps {
@@ -231,33 +231,32 @@ export const EditServiceModal: React.FC<EditServiceModalProps> = ({
             />
           </div>
 
-          {/* Movilidad (Van o Taxi) */}
-          <div className="bg-[#111418] p-3 rounded-xl border border-[#252D38] space-y-2">
-            <label className="flex items-center justify-between text-xs text-[#F0F4F8] font-bold cursor-pointer">
-              <span>¿Traslado en TAXI?</span>
-              <input
-                type="checkbox"
-                checked={esTaxi}
-                onChange={(e) => setEsTaxi(e.target.checked)}
-                className="w-4 h-4 rounded text-amber-500 bg-[#1E2530]"
-              />
+                    {/* Movilidad Asignada (Taxi o Van) */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-[#8A9BB0] flex items-center gap-1">
+              <Truck className="w-3 h-3 text-[#00CED1]" />
+              <span>Movilidad Asignada (Taxi o Van):</span>
             </label>
-
-            {!esTaxi && (
-              <div className="space-y-1 pt-1">
-                <span className="text-[10px] text-[#8A9BB0] font-bold">Van Asignada:</span>
-                <select
-                  value={vehiculoId}
-                  onChange={(e) => setVehiculoId(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs bg-[#181D22] border border-[#2E3847] rounded-lg text-[#F0F4F8]"
-                >
-                  <option value="">-- Sin van asignada --</option>
-                  {VANS_DEFAULT.map(v => (
-                    <option key={v.id} value={v.id}>{v.nombre}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <select
+              value={movilidad}
+              onChange={(e) => setMovilidad(e.target.value)}
+              className="w-full px-3 py-2 text-xs font-black bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:border-[#00CED1] focus:outline-none cursor-pointer"
+            >
+              <option value="">-- Sin movilidad asignada --</option>
+              <optgroup label="Taxis (1 al 5)">
+                <option value="TAXI 1">TAXI 1</option>
+                <option value="TAXI 2">TAXI 2</option>
+                <option value="TAXI 3">TAXI 3</option>
+                <option value="TAXI 4">TAXI 4</option>
+                <option value="TAXI 5">TAXI 5</option>
+              </optgroup>
+              <optgroup label="Vans de la flota (Choferes)">
+                {vans.map(v => (
+                  <option key={v.id} value={v.nombre}>{v.nombre}</option>
+                ))}
+              </optgroup>
+              <option value="Sin movilidad">Sin movilidad</option>
+            </select>
           </div>
 
           {/* Observaciones */}

@@ -201,10 +201,20 @@ export const AgendaTableRow: React.FC<AgendaTableRowProps> = ({
               onChange={(e) => handleMovilidadChange(e.target.value)}
               className="pl-2.5 pr-6 py-1.5 text-xs font-black uppercase rounded-xl border border-amber-600/80 bg-amber-950/40 text-amber-300 hover:bg-amber-900/40 focus:outline-none appearance-none cursor-pointer"
             >
-              <option value="TAXI 1" className="bg-[#181D22] text-[#F0F4F8]">TAXI 1</option>
-              <option value="TAXI 2" className="bg-[#181D22] text-[#F0F4F8]">TAXI 2</option>
-              <option value="Van 01 (Las Flores)" className="bg-[#181D22] text-[#F0F4F8]">VAN 1</option>
-              <option value="Van 02 (Surco)" className="bg-[#181D22] text-[#F0F4F8]">VAN 2</option>
+              <optgroup label="Taxis (1 al 5)" className="bg-[#181D22] text-[#8A9BB0]">
+                <option value="TAXI 1" className="bg-[#181D22] text-[#F0F4F8]">TAXI 1</option>
+                <option value="TAXI 2" className="bg-[#181D22] text-[#F0F4F8]">TAXI 2</option>
+                <option value="TAXI 3" className="bg-[#181D22] text-[#F0F4F8]">TAXI 3</option>
+                <option value="TAXI 4" className="bg-[#181D22] text-[#F0F4F8]">TAXI 4</option>
+                <option value="TAXI 5" className="bg-[#181D22] text-[#F0F4F8]">TAXI 5</option>
+              </optgroup>
+              <optgroup label="Vans de la flota" className="bg-[#181D22] text-[#8A9BB0]">
+                {vehiculosDisponibles.map(v => (
+                  <option key={v.id} value={v.nombre} className="bg-[#181D22] text-[#F0F4F8]">
+                    {v.nombre}
+                  </option>
+                ))}
+              </optgroup>
               <option value="Sin movilidad" className="bg-[#181D22] text-[#8A9BB0]">Sin movilidad</option>
             </select>
             <ChevronDown className="w-3 h-3 text-amber-400 absolute right-1.5 top-2.5 pointer-events-none" />
@@ -281,3 +291,4 @@ export const AgendaTableRow: React.FC<AgendaTableRowProps> = ({
     </div>
   );
 };
+

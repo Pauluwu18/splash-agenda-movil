@@ -10,6 +10,7 @@ import {
   deleteServicioRecord, 
   subscribeToServiciosRealtime,
   reorderServicios,
+  getVansPersonalizadas,
   VANS_DEFAULT 
 } from '../../integrations/supabase-main/services';
 import { fetchOperarios } from '../../integrations/supabase-operators/operators';
@@ -31,7 +32,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   const [fecha, setFecha] = useState<string>(getTodayKey());
   const [servicios, setServicios] = useState<ServicioAgenda[]>([]);
   const [operarios, setOperarios] = useState<Operario[]>([]);
-  const [vehiculos, setVehiculos] = useState<Vehiculo[]>(VANS_DEFAULT);
+  const [vehiculos, setVehiculos] = useState<Vehiculo[]>(() => getVansPersonalizadas());
   const [cargando, setCargando] = useState<boolean>(true);
   
   // Turno seleccionado: Mañana, Tarde o Extras
@@ -50,6 +51,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
       ]);
       setServicios(svcData);
       setOperarios(opsData);
+      setVehiculos(getVansPersonalizadas());
     } catch (e) {
       console.error('Error cargando agenda:', e);
     } finally {
