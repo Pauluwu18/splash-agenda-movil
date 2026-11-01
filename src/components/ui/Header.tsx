@@ -1,7 +1,5 @@
 import React from 'react';
-import { Database, RefreshCw, Sparkles, ShieldCheck } from 'lucide-react';
-import { isMainSupabaseConfigured } from '../../integrations/supabase-main/client';
-import { isOperatorsSupabaseConfigured } from '../../integrations/supabase-operators/client';
+import { RefreshCw } from 'lucide-react';
 
 interface HeaderProps {
   onRefresh?: () => void;
@@ -14,9 +12,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSettings,
   isRefreshing = false 
 }) => {
-  const isMainSupa = isMainSupabaseConfigured();
-  const isOpsSupa = isOperatorsSupabaseConfigured();
-
   return (
     <header className="sticky top-0 z-30 bg-[#0A0E11]/95 backdrop-blur-md border-b border-[#252D38] px-4 py-2.5 flex items-center justify-between">
       {/* Brand */}
@@ -35,7 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Indicadores de Supabase Dual & Botón de recarga */}
+      {/* Indicador de Tiempo Real & Recarga */}
       <div className="flex items-center gap-1.5">
         {onRefresh && (
           <button
@@ -44,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
             className={`w-8 h-8 rounded-xl bg-[#181D22] hover:bg-[#252D38] border border-[#2E3847] flex items-center justify-center text-[#8A9BB0] hover:text-[#F0F4F8] transition ${
               isRefreshing ? 'animate-spin text-[#00CED1]' : ''
             }`}
-            title="Actualizar datos"
+            title="Refrescar agenda"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -52,23 +47,13 @@ export const Header: React.FC<HeaderProps> = ({
 
         <button
           onClick={onOpenSettings}
-          className="flex items-center gap-1 px-2 py-1 rounded-xl bg-[#181D22] border border-[#2E3847] hover:border-[#3D4E63] transition"
-          title="Ajustes de Supabase"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#181D22] border border-[#252D38] hover:border-[#00CED1]/40 transition cursor-pointer"
+          title="Ver Estado de Sincronización"
         >
-          {/* Supa Principal */}
-          <div 
-            className={`w-2 h-2 rounded-full ${isMainSupa ? 'bg-[#22C55E]' : 'bg-[#F59E0B]'}`} 
-            title={isMainSupa ? 'Supa Principal Conectado' : 'Supa Principal Local'}
-          />
-          {/* Supa Operarios */}
-          <div 
-            className={`w-2 h-2 rounded-full ${isOpsSupa ? 'bg-[#00CED1]' : 'bg-[#4A5A70]'}`}
-            title={isOpsSupa ? 'Supa Operarios Conectado' : 'Supa Operarios Pendiente'} 
-          />
-          <span className="text-[10px] font-bold text-[#8A9BB0] ml-0.5">Supa</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-[10px] font-extrabold text-[#F0F4F8]">EN VIVO</span>
         </button>
       </div>
     </header>
   );
 };
-

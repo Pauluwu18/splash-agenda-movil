@@ -4,7 +4,12 @@ import {
   Download, Filter, Sparkles, AlertCircle, RefreshCw, Plus 
 } from 'lucide-react';
 import { ServicioAgenda, Operario, Vehiculo, TurnoHorario } from '../../types';
-import { fetchServiciosPorFecha, deleteServicioRecord, VANS_DEFAULT } from '../../integrations/supabase-main/services';
+import { 
+  fetchServiciosPorFecha, 
+  deleteServicioRecord, 
+  subscribeToServiciosRealtime,
+  VANS_DEFAULT 
+} from '../../integrations/supabase-main/services';
 import { fetchOperarios } from '../../integrations/supabase-operators/operators';
 import { exportarAgendaExcel } from './ExcelExport';
 import { AgendaCard } from './AgendaCard';
@@ -32,8 +37,8 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   const [filtroEspecial, setFiltroEspecial] = useState<'TODOS' | 'TAXI' | 'SIN_OPERARIO' | 'COMPLETADOS'>('TODOS');
   const [busqueda, setBusqueda] = useState<string>('');
 
-  const cargarDatos = async (fechaActual = fecha) => {
-    setCargando(true);
+  const cargarDatos = async (fechaActual = fecha, silencioso = false) => {
+    if (!silencioso) setCargando(true);
     try {
       const [svcData, opsData] = await Promise.all([
         fetchServiciosPorFecha(fechaActual),
@@ -44,12 +49,21 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
     } catch (e) {
       console.error('Error cargando agenda:', e);
     } finally {
-      setCargando(false);
+      if (!silencioso) setCargando(false);
     }
   };
 
   useEffect(() => {
-    cargarDatos(fecha);
+    cargarDatos(fecha, false);
+
+    // Sincronizacion automatica en tiempo real (PC, Movil, otras pestanas)
+    const unsubscribe = subscribeToServiciosRealtime(() => {
+      cargarDatos(fecha, true);
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, [fecha]);
 
   const cambiarDia = (offset: number) => {
@@ -275,4 +289,5 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
     </div>
   );
 };
+
 

@@ -1,13 +1,32 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+// =========================================================================
+// CONFIGURACIÓN OFICIAL FIJADA EN EL REPOSITORIO PARA SIEMPRE (SPLASH)
+// Se gestiona únicamente desde los archivos del código / .env
+// =========================================================================
+export const REPO_DEFAULT_MAIN_URL = 'https://eszshwdyvfuzynnvedxi.supabase.co';
+export const REPO_DEFAULT_MAIN_KEY = 'sb_publishable_0jQCEYJ-juqdhnehK7X3ig_bIgioChy';
+
+export const normalizeSupabaseUrl = (raw: string): string => {
+  if (!raw) return '';
+  return raw.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
+};
+
 export const getMainSupabaseConfig = () => {
   const envUrl = import.meta.env.VITE_SUPABASE_MAIN_URL || import.meta.env.VITE_SUPABASE_URL;
   const envKey = import.meta.env.VITE_SUPABASE_MAIN_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
-  const localUrl = localStorage.getItem('splash_supa_main_url') || localStorage.getItem('app_agenda_supa_url');
-  const localKey = localStorage.getItem('splash_supa_main_key') || localStorage.getItem('app_agenda_supa_key');
+  const localUrl = localStorage.getItem('splash_supa_main_url');
+  const localKey = localStorage.getItem('splash_supa_main_key');
 
-  const url = (envUrl && envUrl.trim() !== '') ? envUrl.trim() : (localUrl ? localUrl.trim() : '');
-  const key = (envKey && envKey.trim() !== '') ? envKey.trim() : (localKey ? localKey.trim() : '');
+  const rawUrl = (envUrl && envUrl.trim() !== '') 
+    ? envUrl 
+    : (localUrl && localUrl.trim() !== '' ? localUrl : REPO_DEFAULT_MAIN_URL);
+    
+  const key = (envKey && envKey.trim() !== '') 
+    ? envKey.trim() 
+    : (localKey && localKey.trim() !== '' ? localKey.trim() : REPO_DEFAULT_MAIN_KEY);
+
+  const url = normalizeSupabaseUrl(rawUrl);
 
   return { url, key };
 };
@@ -16,8 +35,9 @@ let mainClient: SupabaseClient | null = null;
 
 export const initMainSupabase = (customUrl?: string, customKey?: string): SupabaseClient | null => {
   const { url: defaultUrl, key: defaultKey } = getMainSupabaseConfig();
-  const url = customUrl || defaultUrl;
+  const rawUrl = customUrl || defaultUrl;
   const key = customKey || defaultKey;
+  const url = normalizeSupabaseUrl(rawUrl);
 
   if (url && key && url.startsWith('http')) {
     try {
@@ -26,6 +46,11 @@ export const initMainSupabase = (customUrl?: string, customKey?: string): Supaba
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: true
+        },
+        realtime: {
+          params: {
+            eventsPerSecond: 10
+          }
         }
       });
       return mainClient;
@@ -52,16 +77,3 @@ export const getMainSupabase = (): SupabaseClient | null => {
 export const isMainSupabaseConfigured = (): boolean => {
   return getMainSupabase() !== null;
 };
-
-export const saveMainSupabaseCredentials = (url: string, key: string) => {
-  if (url) {
-    localStorage.setItem('splash_supa_main_url', url.trim());
-    localStorage.setItem('app_agenda_supa_url', url.trim());
-  }
-  if (key) {
-    localStorage.setItem('splash_supa_main_key', key.trim());
-    localStorage.setItem('app_agenda_supa_key', key.trim());
-  }
-  return initMainSupabase(url, key);
-};
-

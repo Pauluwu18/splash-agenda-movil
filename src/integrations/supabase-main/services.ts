@@ -107,7 +107,7 @@ export const fetchServiciosPorFecha = async (fechaStr: string): Promise<Servicio
         .order('created_at', { ascending: true });
 
       if (!error && data) {
-        return data.map((item: any) => {
+        const mapped = data.map((item: any) => {
           // Relacionar operarios desde el segundo Supabase mediante los IDs
           const opIds: string[] = item.operario_ids || (item.operario_id ? [item.operario_id] : []);
           const operariosAsignados = allOperators.filter(o => opIds.includes(o.id));
@@ -119,6 +119,15 @@ export const fetchServiciosPorFecha = async (fechaStr: string): Promise<Servicio
             items: item.items || []
           };
         });
+
+        // Guardar en cache local para disponibilidad offline inmediata
+        try {
+          const local = getLocalServices();
+          const filtered = local.filter(s => s.fecha !== fechaStr);
+          setLocalServices([...filtered, ...mapped]);
+        } catch (e) {}
+
+        return mapped;
       }
     } catch (e) {
       console.warn('Fallo Supabase principal servicios, usando local:', e);
@@ -224,14 +233,20 @@ export const saveServicioAgenda = async (
           .eq('id', servicioData.id)
           .select()
           .single();
-        if (!error && data) return data;
+        if (!error && data) {
+          notifyServiciosChange();
+          return data;
+        }
       } else {
         const { data, error } = await supa
           .from('servicios_agenda')
           .insert([payloadToSave])
           .select()
           .single();
-        if (!error && data) return data;
+        if (!error && data) {
+          notifyServiciosChange();
+          return data;
+        }
       }
     } catch (e) {
       console.warn('Error guardando en Supabase, guardando en local:', e);
@@ -254,6 +269,7 @@ export const saveServicioAgenda = async (
     list.push(record);
   }
   setLocalServices(list);
+  notifyServiciosChange();
   return record;
 };
 
@@ -282,6 +298,7 @@ export const updateServicio = async (
     Object.assign(item, updates);
     setLocalServices(list);
   }
+  notifyServiciosChange();
 };
 
 export const deleteServicioRecord = async (id: string): Promise<void> => {
@@ -296,6 +313,7 @@ export const deleteServicioRecord = async (id: string): Promise<void> => {
 
   const list = getLocalServices();
   setLocalServices(list.filter(s => s.id !== id));
+  notifyServiciosChange();
 };
 
 const saveClienteRecord = async (cliente: Partial<Cliente>) => {
@@ -325,5 +343,156 @@ const saveClienteRecord = async (cliente: Partial<Cliente>) => {
     clientes.push({ ...(cliente as Cliente), id: `cli-${Date.now()}` });
   }
   localStorage.setItem('splash_clientes_local', JSON.stringify(clientes));
+};
+
+// =========================================================================
+// SINCRONIZACIÓN EN TIEMPO REAL (PC <-> MÓVIL Y MULTIPESTAÑA)
+// =========================================================================
+let broadcastChannel: BroadcastChannel | null = null;
+try {
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    broadcastChannel = new BroadcastChannel('splash_sync_channel');
+  }
+} catch (e) {}
+
+/**
+ * Emite una notificación de cambio hacia todas las pestañas locales
+ * y hacia todos los demás dispositivos (PC / Celular) conectados a Supabase.
+ */
+export const notifyServiciosChange = () => {
+  // 1. BroadcastChannel local (otras pestañas en la misma PC o celular)
+  if (broadcastChannel) {
+    try {
+      broadcastChannel.postMessage({ type: 'SERVICIOS_CHANGED', time: Date.now() });
+    } catch (e) {}
+  }
+
+  // 2. CustomEvent en la ventana actual
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('splash_servicios_changed', { detail: { time: Date.now() } }));
+
+    // 3. Storage event fallback
+    try {
+      localStorage.setItem('splash_last_sync_time', String(Date.now()));
+    } catch (e) {}
+  }
+
+  // 4. Supabase Realtime Broadcast (llega a PC / Móviles en cualquier lugar del mundo)
+  const supa = getMainSupabase();
+  if (supa) {
+    try {
+      const channel = supa.channel('splash_realtime_broadcast');
+      channel.send({
+        type: 'broadcast',
+        event: 'servicios_changed',
+        payload: { time: Date.now() }
+      }).catch(() => {});
+    } catch (e) {
+      console.warn('Error enviando broadcast Realtime a Supabase:', e);
+    }
+  }
+};
+
+/**
+ * Se suscribe a cambios en tiempo real desde Supabase, BroadcastChannel,
+ * pestañas locales y eventos de foco del dispositivo.
+ */
+export const subscribeToServiciosRealtime = (onUpdate: () => void): (() => void) => {
+  const cleanups: (() => void)[] = [];
+
+  // 1. Escuchar CustomEvent local
+  const handleCustom = () => onUpdate();
+  window.addEventListener('splash_servicios_changed', handleCustom);
+  cleanups.push(() => window.removeEventListener('splash_servicios_changed', handleCustom));
+
+  // 2. Escuchar BroadcastChannel (otras pestañas)
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    try {
+      const bc = new BroadcastChannel('splash_sync_channel');
+      const handleBC = (ev: MessageEvent) => {
+        if (ev.data?.type === 'SERVICIOS_CHANGED') {
+          onUpdate();
+        }
+      };
+      bc.addEventListener('message', handleBC);
+      cleanups.push(() => {
+        bc.removeEventListener('message', handleBC);
+        bc.close();
+      });
+    } catch (e) {}
+  }
+
+  // 3. Escuchar storage event (fallback entre pestañas)
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === 'splash_last_sync_time' || e.key === 'splash_servicios_local') {
+      onUpdate();
+    }
+  };
+  window.addEventListener('storage', handleStorage);
+  cleanups.push(() => window.removeEventListener('storage', handleStorage));
+
+  // 4. Refresco al volver al navegador o app móvil (focus y visibility)
+  const handleFocus = () => onUpdate();
+  const handleVisibility = () => {
+    if (document.visibilityState === 'visible') {
+      onUpdate();
+    }
+  };
+  window.addEventListener('focus', handleFocus);
+  document.addEventListener('visibilitychange', handleVisibility);
+  cleanups.push(() => window.removeEventListener('focus', handleFocus));
+  cleanups.push(() => document.removeEventListener('visibilitychange', handleVisibility));
+
+  // 5. Polling de seguridad cada 6 segundos cuando la pantalla está visible
+  const intervalId = setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      onUpdate();
+    }
+  }, 6000);
+  cleanups.push(() => clearInterval(intervalId));
+
+  // 6. Suscripción a Supabase Realtime (WebSockets - Postgres changes + Broadcast)
+  const supa = getMainSupabase();
+  if (supa) {
+    try {
+      const channelId = `agenda_live_${Math.random().toString(36).substring(7)}`;
+      const channel = supa.channel(channelId)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'servicios_agenda' },
+          (payload) => {
+            console.log('⚡ Supabase Realtime Postgres:', payload.eventType);
+            onUpdate();
+          }
+        )
+        .on(
+          'broadcast',
+          { event: 'servicios_changed' },
+          () => {
+            console.log('⚡ Supabase Realtime Broadcast recibido de otro dispositivo');
+            onUpdate();
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('🟢 Supabase Realtime canal activo');
+          }
+        });
+
+      cleanups.push(() => {
+        try {
+          supa.removeChannel(channel);
+        } catch (e) {}
+      });
+    } catch (err) {
+      console.warn('Aviso configurando Supabase Realtime:', err);
+    }
+  }
+
+  return () => {
+    cleanups.forEach(fn => {
+      try { fn(); } catch (e) {}
+    });
+  };
 };
 
