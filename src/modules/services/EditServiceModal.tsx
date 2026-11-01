@@ -26,6 +26,10 @@ export const EditServiceModal: React.FC<EditServiceModalProps> = ({
   const [precioFinal, setPrecioFinal] = useState<string>(String(servicio.precio_final));
   const [comentarios, setComentarios] = useState<string>(servicio.comentarios || '');
   const [esTaxi, setEsTaxi] = useState<boolean>(servicio.es_taxi);
+  const [movilidad, setMovilidad] = useState<string>(
+    servicio.van_nombre || (servicio.es_taxi ? 'TAXI 1' : 'Sin movilidad')
+  );
+  const [vans, setVans] = useState<Vehiculo[]>(() => getVansPersonalizadas());
   const [vehiculoId, setVehiculoId] = useState<string>(servicio.vehiculo_id || '');
   
   // Regla original de SPLASH para rectificación
@@ -62,9 +66,9 @@ export const EditServiceModal: React.FC<EditServiceModalProps> = ({
         link_maps: linkMaps.trim(),
         precio_final: esRectificacion ? 0 : (Number(precioFinal) || 0),
         es_rectificacion: esRectificacion,
-        es_taxi: esTaxi,
-        vehiculo_id: esTaxi ? null : (vehiculoId || null),
-        van_nombre: esTaxi ? '' : (van?.nombre || servicio.van_nombre || ''),
+        es_taxi: movilidad.toUpperCase().includes('TAXI'),
+        vehiculo_id: null,
+        van_nombre: movilidad === 'Sin movilidad' ? '' : movilidad,
         comentarios: comentarios.trim()
       });
 

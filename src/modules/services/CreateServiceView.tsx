@@ -80,7 +80,9 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
   // 6. Personal (Segundo Supabase) & Flota
   const [operariosDisponibles, setOperariosDisponibles] = useState<Operario[]>([]);
   const [operariosSeleccionados, setOperariosSeleccionados] = useState<string[]>([]);
-  const [esTaxi, setEsTaxi] = useState<boolean>(false);
+  const [esTaxi, setEsTaxi] = useState<boolean>(true);
+  const [movilidad, setMovilidad] = useState<string>('TAXI 1');
+  const [vans, setVans] = useState<Vehiculo[]>(() => getVansPersonalizadas());
   const [vehiculoId, setVehiculoId] = useState<string>('');
 
   // 7. Observaciones
@@ -222,7 +224,7 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
         metodo_pago: metodoPago,
         es_taxi: esTaxi,
         vehiculo_id: esTaxi ? undefined : vehiculoId || undefined,
-        van_nombre: esTaxi ? '' : vanActual?.nombre || '',
+        van_nombre: esTaxi ? (movilidad || 'TAXI 1') : (movilidad === 'Sin movilidad' ? '' : movilidad),
         comentarios: comentarios.trim(),
         estado: 'PENDIENTE' as const
       };
