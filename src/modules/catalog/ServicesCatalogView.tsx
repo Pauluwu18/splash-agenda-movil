@@ -7,8 +7,8 @@ import { CategoriaCatalogo, SubcategoriaCatalogo } from '../../types';
 import { 
   getCatalogoPersonalizado, 
   addServicioToCatalog, 
-  deleteServicioFromCatalog,
-  saveCatalogoPersonalizado
+  updateServicioInCatalog,
+  deleteServicioFromCatalog 
 } from '../../integrations/supabase-main/services';
 import { formatMontoSoles } from '../../utils/businessRules';
 
@@ -20,6 +20,13 @@ const CATEGORIAS_PREDEFINIDAS = [
   'Otros / Personalizado'
 ];
 
+interface EditModalState {
+  id: string;
+  nombre: string;
+  precio: string;
+  categoria: string;
+}
+
 export const ServicesCatalogView: React.FC = () => {
   const [catalogo, setCatalogo] = useState<CategoriaCatalogo[]>([]);
   const [mostrarModal, setMostrarModal] = useState<boolean>(false);
@@ -27,6 +34,9 @@ export const ServicesCatalogView: React.FC = () => {
   const [nombreServicio, setNombreServicio] = useState<string>('');
   const [precioServicio, setPrecioServicio] = useState<string>('120');
   const [mensaje, setMensaje] = useState<string>('');
+
+  // Estado para editar un servicio existente
+  const [servicioAEditar, setServicioAEditar] = useState<EditModalState | null>(null);
 
   const cargar = () => {
     setCatalogo(getCatalogoPersonalizado());
@@ -51,6 +61,23 @@ export const ServicesCatalogView: React.FC = () => {
     setMostrarModal(false);
     cargar();
     setMensaje('✅ Servicio agregado al catálogo.');
+    setTimeout(() => setMensaje(''), 3000);
+  };
+
+  const handleGuardarEdicion = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!servicioAEditar || !servicioAEditar.nombre.trim() || !servicioAEditar.precio) return;
+
+    updateServicioInCatalog(
+      servicioAEditar.id,
+      servicioAEditar.nombre.trim(),
+      Number(servicioAEditar.precio) || 0,
+      servicioAEditar.categoria.trim()
+    );
+
+    setServicioAEditar(null);
+    cargar();
+    setMensaje('✅ Servicio actualizado correctamente.');
     setTimeout(() => setMensaje(''), 3000);
   };
 
@@ -108,7 +135,7 @@ export const ServicesCatalogView: React.FC = () => {
         {/* Lista de Categorías y Servicios */}
         <div className="space-y-4">
           {catalogo.map(cat => (
-            <div key={cat.id} className="bg-[#181D22] rounded-2xl border border-[#252D38] overflow-hidden">
+            <div key={cat.id} className="bg-[#181D22] rounded-2xl border border-[#252D38] overflow-hidden shadow-xs">
               <div className="px-4 py-3 bg-[#111418] border-b border-[#252D38] flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg bg-[#1E2530] flex items-center justify-center">
@@ -123,16 +150,33 @@ export const ServicesCatalogView: React.FC = () => {
 
               <div className="divide-y divide-[#252D38]">
                 {cat.subcategorias.map(sub => (
-                  <div key={sub.id} className="px-4 py-2.5 flex items-center justify-between hover:bg-[#1E2530]/50 transition">
-                    <span className="text-xs font-semibold text-[#F0F4F8]">{sub.nombre}</span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-black text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded-lg border border-emerald-800/60 font-mono">
+                  <div key={sub.id} className="px-4 py-3 flex items-center justify-between hover:bg-[#1E2530]/50 transition">
+                    <span className="text-xs font-bold text-[#F0F4F8]">{sub.nombre}</span>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-xs font-black text-emerald-400 bg-emerald-950/50 px-2.5 py-1 rounded-xl border border-emerald-800/60 font-mono">
                         S/ {formatMontoSoles(sub.precio_sugerido)}
                       </span>
+
+                      {/* Botón Editar Servicio */}
+                      <button
+                        type="button"
+                        onClick={() => setServicioAEditar({
+                          id: sub.id,
+                          nombre: sub.nombre,
+                          precio: String(sub.precio_sugerido),
+                          categoria: cat.nombre
+                        })}
+                        className="w-8 h-8 rounded-lg bg-[#111418] border border-[#252D38] text-[#8A9BB0] hover:text-[#00CED1] hover:bg-[#1E2530] flex items-center justify-center transition cursor-pointer"
+                        title="Editar servicio y precio"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Botón Eliminar Servicio */}
                       <button
                         type="button"
                         onClick={() => handleEliminar(sub.id, sub.nombre)}
-                        className="p-1 rounded-lg text-[#8A9BB0] hover:text-rose-400 hover:bg-rose-950/40 transition"
+                        className="w-8 h-8 rounded-lg bg-[#111418] border border-[#252D38] text-[#8A9BB0] hover:text-rose-400 hover:bg-rose-950/40 flex items-center justify-center transition cursor-pointer"
                         title="Eliminar del catálogo"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -157,7 +201,7 @@ export const ServicesCatalogView: React.FC = () => {
               </h3>
               <button
                 onClick={() => setMostrarModal(false)}
-                className="w-7 h-7 rounded-full bg-[#1E2530] text-[#8A9BB0] flex items-center justify-center"
+                className="w-7 h-7 rounded-full bg-[#1E2530] text-[#8A9BB0] flex items-center justify-center cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -165,7 +209,7 @@ export const ServicesCatalogView: React.FC = () => {
 
             <form onSubmit={handleGuardar} className="space-y-3.5">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-[#8A9BB0]">Categoría:</label>
+                <label className="text-[10px] font-bold text-[#8A9BB0] uppercase">Categoría:</label>
                 <select
                   value={categoriaSeleccionada}
                   onChange={(e) => setCategoriaSeleccionada(e.target.value)}
@@ -178,19 +222,19 @@ export const ServicesCatalogView: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-[#8A9BB0]">Nombre del Servicio (Ítem):</label>
+                <label className="text-[10px] font-bold text-[#8A9BB0] uppercase">Nombre del Servicio (Ítem):</label>
                 <input
                   type="text"
                   required
-                  placeholder="Ej. Mueble en L Pequeño, Colchón Queen, etc."
+                  placeholder="Ej. Mueble 3-2-1, Colchón Queen, etc."
                   value={nombreServicio}
                   onChange={(e) => setNombreServicio(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:ring-1 focus:ring-[#00CED1] focus:outline-none"
+                  className="w-full px-3 py-2 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:ring-1 focus:ring-[#00CED1] focus:outline-none"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-[#8A9BB0]">Precio en Soles (S/):</label>
+                <label className="text-[10px] font-bold text-[#8A9BB0] uppercase">Precio en Soles (S/):</label>
                 <input
                   type="number"
                   required
@@ -199,7 +243,7 @@ export const ServicesCatalogView: React.FC = () => {
                   placeholder="140"
                   value={precioServicio}
                   onChange={(e) => setPrecioServicio(e.target.value)}
-                  className="w-full px-3 py-2 text-xs font-black bg-[#111418] border border-[#2E3847] rounded-xl text-emerald-400 focus:ring-1 focus:ring-[#00CED1] focus:outline-none"
+                  className="w-full px-3 py-2 text-xs font-black bg-[#111418] border border-[#2E3847] rounded-xl text-emerald-400 focus:ring-1 focus:ring-[#00CED1] focus:outline-none font-mono"
                 />
               </div>
 
@@ -207,15 +251,90 @@ export const ServicesCatalogView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setMostrarModal(false)}
-                  className="flex-1 py-2.5 bg-[#111418] text-[#8A9BB0] font-bold text-xs rounded-xl border border-[#2E3847]"
+                  className="flex-1 py-2.5 bg-[#111418] text-[#8A9BB0] font-bold text-xs rounded-xl border border-[#2E3847] cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-[#00CED1] text-slate-950 font-black text-xs rounded-xl shadow-md transition"
+                  className="flex-1 py-2.5 bg-[#00CED1] text-slate-950 font-black text-xs rounded-xl shadow-md transition cursor-pointer"
                 >
                   Guardar Servicio
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PARA EDITAR SERVICIO EXISTENTE */}
+      {servicioAEditar && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in">
+          <div className="w-full max-w-md bg-[#181D22] rounded-t-3xl sm:rounded-2xl border border-[#2E3847] shadow-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-[#252D38] pb-3">
+              <h3 className="text-sm font-extrabold text-[#F0F4F8] flex items-center gap-2">
+                <Edit2 className="w-4 h-4 text-[#00CED1]" />
+                <span>Editar Servicio y Precio</span>
+              </h3>
+              <button
+                onClick={() => setServicioAEditar(null)}
+                className="w-7 h-7 rounded-full bg-[#1E2530] text-[#8A9BB0] flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleGuardarEdicion} className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#8A9BB0] uppercase">Categoría:</label>
+                <select
+                  value={servicioAEditar.categoria}
+                  onChange={(e) => setServicioAEditar({ ...servicioAEditar, categoria: e.target.value })}
+                  className="w-full px-3 py-2 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:outline-none"
+                >
+                  {CATEGORIAS_PREDEFINIDAS.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#8A9BB0] uppercase">Nombre del Servicio:</label>
+                <input
+                  type="text"
+                  required
+                  value={servicioAEditar.nombre}
+                  onChange={(e) => setServicioAEditar({ ...servicioAEditar, nombre: e.target.value })}
+                  className="w-full px-3 py-2 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:ring-1 focus:ring-[#00CED1] focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#8A9BB0] uppercase">Precio en Soles (S/):</label>
+                <input
+                  type="number"
+                  required
+                  step="1"
+                  min="0"
+                  value={servicioAEditar.precio}
+                  onChange={(e) => setServicioAEditar({ ...servicioAEditar, precio: e.target.value })}
+                  className="w-full px-3 py-2 text-xs font-black bg-[#111418] border border-[#2E3847] rounded-xl text-emerald-400 focus:ring-1 focus:ring-[#00CED1] focus:outline-none font-mono"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setServicioAEditar(null)}
+                  className="flex-1 py-2.5 bg-[#111418] text-[#8A9BB0] font-bold text-xs rounded-xl border border-[#2E3847] cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-[#00CED1] text-slate-950 font-black text-xs rounded-xl shadow-md transition cursor-pointer"
+                >
+                  Guardar Cambios
                 </button>
               </div>
             </form>
@@ -225,4 +344,3 @@ export const ServicesCatalogView: React.FC = () => {
     </div>
   );
 };
-

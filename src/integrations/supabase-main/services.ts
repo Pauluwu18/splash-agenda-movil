@@ -148,6 +148,44 @@ export const deleteServicioFromCatalog = (subcategoriaId: string) => {
   return cats;
 };
 
+export const updateServicioInCatalog = (
+  subcategoriaId: string, 
+  nuevoNombre: string, 
+  nuevoPrecio: number, 
+  nuevaCategoria?: string
+): CategoriaCatalogo[] => {
+  const cats = getCatalogoPersonalizado();
+  for (const cat of cats) {
+    const idx = cat.subcategorias.findIndex(s => s.id === subcategoriaId);
+    if (idx !== -1) {
+      const sub = { ...cat.subcategorias[idx] };
+      sub.nombre = nuevoNombre.trim();
+      sub.precio_sugerido = Number(nuevoPrecio) || 0;
+
+      if (nuevaCategoria && nuevaCategoria.trim() !== cat.nombre.trim()) {
+        cat.subcategorias.splice(idx, 1);
+        let targetCat = cats.find(c => c.nombre.trim().toLowerCase() === nuevaCategoria.trim().toLowerCase());
+        if (!targetCat) {
+          targetCat = {
+            id: `cat-${Date.now()}`,
+            nombre: nuevaCategoria.trim(),
+            icono: 'Sparkles',
+            subcategorias: []
+          };
+          cats.push(targetCat);
+        }
+        sub.categoria_id = targetCat.id;
+        targetCat.subcategorias.push(sub);
+      } else {
+        cat.subcategorias[idx] = sub;
+      }
+      break;
+    }
+  }
+  saveCatalogoPersonalizado(cats);
+  return cats;
+};
+
 // =========================================================================
 // GESTIÓN DE VANS PERSONALIZADAS
 // =========================================================================
@@ -193,17 +231,19 @@ export const deleteVanFromFlota = (vanId: string): Vehiculo[] => {
 };
 
 // =========================================================================
-// CODIFICACIÓN LIMPIA DE METADATOS (VAN Y OPERARIO EN COMENTARIOS)
+// CODIFICACIÓN LIMPIA DE METADATOS (VAN, OPERARIO Y TELÉFONO 2 EN COMENTARIOS)
 // =========================================================================
-export const encodeMetadataComentarios = (comentarios = '', vanNombre = '', operarioId = ''): string => {
+export const encodeMetadataComentarios = (comentarios = '', vanNombre = '', operarioId = '', tel2 = ''): string => {
   const cleanCom = (comentarios || '')
     .replace(/\[VAN:[^\]]*\]\s*/g, '')
     .replace(/\[OP:[^\]]*\]\s*/g, '')
+    .replace(/\[TEL2:[^\]]*\]\s*/g, '')
     .trim();
 
   const parts: string[] = [];
   if (vanNombre) parts.push(`[VAN:${vanNombre}]`);
   if (operarioId) parts.push(`[OP:${operarioId}]`);
+  if (tel2) parts.push(`[TEL2:${tel2}]`);
   if (cleanCom) parts.push(cleanCom);
 
   return parts.join(' ').trim();
@@ -212,6 +252,7 @@ export const encodeMetadataComentarios = (comentarios = '', vanNombre = '', oper
 export const decodeMetadataComentarios = (comentarios = '') => {
   let vanNombre = '';
   let operarioId = '';
+  let tel2 = '';
   let clean = comentarios || '';
 
   const vanMatch = clean.match(/\[VAN:([^\]]+)\]/);
@@ -226,9 +267,16 @@ export const decodeMetadataComentarios = (comentarios = '') => {
     clean = clean.replace(/\[OP:[^\]]*\]\s*/g, '');
   }
 
+  const tel2Match = clean.match(/\[TEL2:([^\]]+)\]/);
+  if (tel2Match) {
+    tel2 = tel2Match[1].trim();
+    clean = clean.replace(/\[TEL2:[^\]]*\]\s*/g, '');
+  }
+
   return {
     vanNombre,
     operarioId,
+    tel2,
     comentarios: clean.trim()
   };
 };
@@ -265,13 +313,14 @@ export const fetchServiciosPorFecha = async (fechaStr: string): Promise<Servicio
 
       if (!error && data) {
         const mapped: ServicioAgenda[] = data.map((item: any) => {
-          const { vanNombre: decVan, operarioId: decOp, comentarios: cleanCom } = decodeMetadataComentarios(item.comentarios);
+          const { vanNombre: decVan, operarioId: decOp, tel2: decTel2, comentarios: cleanCom } = decodeMetadataComentarios(item.comentarios);
           const vanNombre = decVan || (item.es_taxi ? 'TAXI 1' : 'Sin movilidad');
           const opIds = decOp ? [decOp] : [];
           const operariosAsignados = allOperators.filter(o => opIds.includes(o.id));
 
           return {
             ...item,
+            telefono_secundario: decTel2 || item.telefono_secundario || '',
             van_nombre: vanNombre,
             operario_ids: opIds,
             operarios: operariosAsignados,
@@ -365,7 +414,12 @@ export const saveServicioAgenda = async (
   const supa = getMainSupabase();
   const van = servicioData.van_nombre || (servicioData.es_taxi ? 'TAXI 1' : 'Sin movilidad');
   const opId = operarioIds[0] || servicioData.operario_id || '';
-  const comentariosEncoded = encodeMetadataComentarios(servicioData.comentarios, van, opId);
+  const comentariosEncoded = encodeMetadataComentarios(
+    servicioData.comentarios, 
+    van, 
+    opId, 
+    servicioData.telefono_secundario
+  );
 
   // Columnas exactas de la tabla servicios_agenda en Supabase
   const dbPayload = {
@@ -575,12 +629,16 @@ export const updateServicio = async (
   const list = getLocalServices();
   const current = list.find(s => s.id === id);
 
+  const currentDec = decodeMetadataComentarios(current?.comentarios);
   const van = updates.van_nombre ?? current?.van_nombre ?? (updates.es_taxi ? 'TAXI 1' : 'Sin movilidad');
-  const opId = updates.operario_ids?.[0] ?? current?.operario_ids?.[0] ?? '';
-  const rawCom = updates.comentarios ?? current?.comentarios ?? '';
-  const newComentarios = encodeMetadataComentarios(rawCom, van, opId);
+  const opId = updates.operario_ids?.[0] ?? current?.operario_ids?.[0] ?? currentDec.operarioId;
+  const tel2 = updates.telefono_secundario !== undefined ? updates.telefono_secundario : (current?.telefono_secundario ?? currentDec.tel2);
+  const rawCom = updates.comentarios ?? currentDec.comentarios;
+  const newComentarios = encodeMetadataComentarios(rawCom, van, opId, tel2);
 
   const dbUpdates: any = {};
+  if (updates.servicio_detalle !== undefined) dbUpdates.servicio_detalle = updates.servicio_detalle;
+  if (updates.telefono !== undefined) dbUpdates.telefono = updates.telefono;
   if (updates.fecha !== undefined) dbUpdates.fecha = updates.fecha;
   if (updates.horario !== undefined) dbUpdates.horario = updates.horario;
   if (updates.hora_estimada !== undefined) dbUpdates.hora_estimada = updates.hora_estimada;

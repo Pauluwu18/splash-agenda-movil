@@ -25,6 +25,9 @@ export const EditServiceModal: React.FC<EditServiceModalProps> = ({
   const [linkMaps, setLinkMaps] = useState<string>(servicio.link_maps || '');
   const [precioFinal, setPrecioFinal] = useState<string>(String(servicio.precio_final));
   const [comentarios, setComentarios] = useState<string>(servicio.comentarios || '');
+  const [telefono, setTelefono] = useState<string>(servicio.telefono || '');
+  const [telefonoSecundario, setTelefonoSecundario] = useState<string>(servicio.telefono_secundario || '');
+  const [servicioDetalle, setServicioDetalle] = useState<string>(servicio.servicio_detalle || '');
   const [esTaxi, setEsTaxi] = useState<boolean>(servicio.es_taxi);
   const [movilidad, setMovilidad] = useState<string>(
     servicio.van_nombre || (servicio.es_taxi ? 'TAXI 1' : 'Sin movilidad')
@@ -59,6 +62,9 @@ export const EditServiceModal: React.FC<EditServiceModalProps> = ({
       const van = VANS_DEFAULT.find(v => v.id === vehiculoId);
 
       await updateServicio(servicio.id, {
+        telefono: telefono.trim(),
+        telefono_secundario: telefonoSecundario.trim(),
+        servicio_detalle: servicioDetalle.trim(),
         fecha,
         horario,
         hora_estimada: horaEstimada,
@@ -129,6 +135,46 @@ export const EditServiceModal: React.FC<EditServiceModalProps> = ({
                 ℹ️ Al marcar rectificación, el precio se fijará en <strong>S/ 0.00</strong> y se conservará el mismo personal técnico asignado.
               </p>
             )}
+          </div>
+
+          {/* Detalle del Servicio */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-[#8A9BB0] flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-[#00CED1]" />
+              <span>Servicio / Ítems:</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={servicioDetalle}
+              onChange={(e) => setServicioDetalle(e.target.value)}
+              placeholder="Ej. 6 sillas + 6 sillas + butaca"
+              className="w-full px-3 py-2 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:border-[#00CED1] focus:outline-none"
+            />
+          </div>
+
+          {/* Teléfonos de Contacto (Principal + Secundario Opcional) */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-[#8A9BB0]">Teléfono Principal:</label>
+              <input
+                type="tel"
+                required
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+                className="w-full px-3 py-2 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:outline-none"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-[#8A9BB0]">Teléfono 2 (opcional):</label>
+              <input
+                type="tel"
+                placeholder="Opcional"
+                value={telefonoSecundario}
+                onChange={(e) => setTelefonoSecundario(e.target.value)}
+                className="w-full px-3 py-2 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:outline-none"
+              />
+            </div>
           </div>
 
           {/* Fecha */}

@@ -19,6 +19,7 @@ export interface ServicioAgenda {
   cliente_id?: string;
   cliente_nombre: string;
   telefono: string;
+  telefono_secundario?: string;
   empresa_id?: string;
   empresa_nombre?: string;
   empresa_color?: string;
@@ -57,6 +58,7 @@ export interface Cliente {
   id: string;
   nombre: string;
   telefono: string;
+  telefono_secundario?: string;
   distrito?: string;
   direccion?: string;
   empresa_id?: string;

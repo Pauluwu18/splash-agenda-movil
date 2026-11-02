@@ -49,6 +49,7 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
 
   // 2. Cliente
   const [telefono, setTelefono] = useState<string>('');
+  const [telefonoSecundario, setTelefonoSecundario] = useState<string>('');
   const [clienteNombre, setClienteNombre] = useState<string>('');
   const [clienteEncontrado, setClienteEncontrado] = useState<boolean>(false);
   const [empresaId] = useState<string>(EMPRESAS_DEFAULT[0].id);
@@ -205,6 +206,7 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
       const payload = {
         cliente_nombre: clienteNombre.trim(),
         telefono: telefono.trim(),
+        telefono_secundario: telefonoSecundario.trim(),
         empresa_id: empresaId,
         empresa_nombre: empresaActual?.nombre || 'SUMAQ',
         empresa_color: empresaActual?.color || '#00CED1',
@@ -288,7 +290,7 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
             <Phone className="w-4 h-4 text-[#8A9BB0] absolute left-3 top-3.5" />
             <input
               type="tel"
-              placeholder="Teléfono móvil (9 dígitos) *"
+              placeholder="Teléfono móvil principal (9 dígitos) *"
               value={telefono}
               onChange={(e) => setTelefono(e.target.value.replace(/\D/g, '').slice(0, 9))}
               className="w-full pl-9 pr-3 py-2.5 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] placeholder-[#4A5A70] focus:ring-1 focus:ring-[#00CED1] focus:outline-none"
@@ -299,6 +301,18 @@ export const CreateServiceView: React.FC<CreateServiceViewProps> = ({
                 <span>Cliente existente</span>
               </span>
             )}
+          </div>
+
+          {/* Teléfono 2 / Opcional */}
+          <div className="relative">
+            <Phone className="w-4 h-4 text-[#8A9BB0] absolute left-3 top-3.5" />
+            <input
+              type="tel"
+              placeholder="Teléfono 2 / Contacto opcional"
+              value={telefonoSecundario}
+              onChange={(e) => setTelefonoSecundario(e.target.value.replace(/\D/g, '').slice(0, 9))}
+              className="w-full pl-9 pr-3 py-2.5 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] placeholder-[#4A5A70] focus:ring-1 focus:ring-[#00CED1] focus:outline-none"
+            />
           </div>
 
           {/* Nombre del cliente */}

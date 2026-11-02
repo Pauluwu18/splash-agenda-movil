@@ -164,8 +164,13 @@ export const AgendaTableRow: React.FC<AgendaTableRowProps> = ({
               </span>
             </div>
 
-            <div className="flex items-center gap-2 text-[11px] text-[#8A9BB0]">
+            <div className="flex items-center gap-2 text-[11px] text-[#8A9BB0] flex-wrap">
               <span className="font-mono text-[#A0AEC0]">{servicio.telefono}</span>
+              {servicio.telefono_secundario && (
+                <span className="font-mono text-[#00CED1] font-semibold text-[10px]">
+                  / {servicio.telefono_secundario}
+                </span>
+              )}
               {servicio.hora_estimada && (
                 <span className="flex items-center gap-0.5 text-[#00CED1] font-semibold">
                   <Clock className="w-3 h-3" />

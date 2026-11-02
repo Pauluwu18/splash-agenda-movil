@@ -1,7 +1,7 @@
 import { ServicioAgenda } from '../types';
 
 /**
- * Formatea una fecha YYYY-MM-DD al formato exacto de SPLASH:
+ * Formatea una fecha YYYY-MM-DD al formato exacto de SUMAQ:
  * Ej: "2026-11-01" -> "Domingo 1 noviembre"
  */
 export const formatearFechaEspanol = (fechaStr: string): string => {
@@ -34,14 +34,14 @@ export const formatearPrecioLimpio = (monto: number): string => {
 };
 
 /**
- * Genera la plantilla exacta oficial de SPLASH para enviar al operario:
+ * Genera la plantilla exacta oficial de SUMAQ para enviar al operario:
  * 
  * Fecha 📆: Domingo 1 noviembre
  * Hora de llegada⌚: 1:30pm - 2:30pm Aprox 
  * Nombre 📛: Alexandra Roulet Origgi
- * Teléfono📱: 987768805
+ * Teléfono📱: 987768805 / 912345678 (si hay número opcional)
  * Dirección 🧭: Clemente X 110 dpto.502 (Magdalena del Mar) 
- * https://maps.app.goo.gl/swHDLXPog5myke9u8?g_st=ic
+ * (Solo se incluye link si fue agendado explícitamente)
  * Servicio 🧽: 6 sillas + 6 sillas + butaca 
  * Precio 🏷️: S/140
  * Método de pago: Yape o Plin
@@ -59,10 +59,10 @@ export const generarOrdenWhatsAppOperario = (svc: ServicioAgenda): string => {
     direccionCompleta += ` (Ref: ${svc.referencia.trim()})`;
   }
 
-  // Link de mapa (link_maps guardado o búsqueda en Google Maps)
-  const mapsLink = (svc.link_maps && svc.link_maps.trim())
-    ? svc.link_maps.trim()
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${svc.direccion}, ${svc.distrito}, Lima, Peru`)}`;
+  // Teléfono principal y teléfono secundario opcional
+  const telefonoTexto = (svc.telefono_secundario && svc.telefono_secundario.trim())
+    ? `${svc.telefono} / ${svc.telefono_secundario.trim()}`
+    : svc.telefono;
 
   // Servicio detalle: si tiene items los une con " + "
   let servicioTexto = svc.servicio_detalle;
@@ -98,13 +98,20 @@ export const generarOrdenWhatsAppOperario = (svc: ServicioAgenda): string => {
     `Fecha 📆: ${fechaStr}`,
     `Hora de llegada⌚: ${horaStr}`,
     `Nombre 📛: ${svc.cliente_nombre}`,
-    `Teléfono📱: ${svc.telefono}`,
+    `Teléfono📱: ${telefonoTexto}`,
     `Dirección 🧭: ${direccionCompleta}`,
-    mapsLink,
+  ];
+
+  // REQUISITO: Que NO se genere un link de dirección si no hay uno agendado
+  if (svc.link_maps && svc.link_maps.trim().startsWith('http')) {
+    lineas.push(svc.link_maps.trim());
+  }
+
+  lineas.push(
     `Servicio 🧽: ${servicioTexto}`,
     `Precio 🏷️: ${precioTexto}`,
     `Método de pago: ${metodoPago}`
-  ];
+  );
 
   if (svc.comentarios && svc.comentarios.trim()) {
     lineas.push(`Observaciones 📝: ${svc.comentarios.trim()}`);
@@ -114,7 +121,7 @@ export const generarOrdenWhatsAppOperario = (svc: ServicioAgenda): string => {
 };
 
 /**
- * Plantilla de confirmación para el cliente (mismo formato claro de SPLASH)
+ * Plantilla de confirmación para el cliente
  */
 export const generarMensajeWhatsAppCliente = (svc: ServicioAgenda): string => {
   return generarOrdenWhatsAppOperario(svc);
