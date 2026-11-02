@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { User, Lock, Eye, EyeOff, LogIn, Sparkles, CheckCircle2 } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, LogIn, ShieldAlert } from 'lucide-react';
 
 interface LoginViewProps {
   onLoginSuccess: (user: { username: string; role: string }) => void;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
-  const [usuario, setUsuario] = useState('admin');
-  const [password, setPassword] = useState('Winsley123');
+  // Los campos inician completamente vacíos por seguridad
+  const [usuario, setUsuario] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -16,12 +17,22 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     e.preventDefault();
     setErrorMsg('');
 
+    if (!usuario.trim()) {
+      setErrorMsg('Por favor ingresa tu usuario.');
+      return;
+    }
+
+    if (!password) {
+      setErrorMsg('Por favor ingresa tu contraseña.');
+      return;
+    }
+
     const savedPassword = localStorage.getItem('sumaq_admin_password') || 'Winsley123';
     const cleanUser = usuario.trim().toLowerCase();
 
-    // Validar usuario 'admin' y contraseña 'Winsley123' (o personalizada)
-    const isValidUser = cleanUser === 'admin' || cleanUser === 'admin.sumaq' || cleanUser === 'shoghi.splash';
-    const isValidPass = password === savedPassword || password === 'Winsley123' || password === 'admin';
+    // Validar usuario 'admin' y contraseña oficial configurada
+    const isValidUser = cleanUser === 'admin';
+    const isValidPass = password === savedPassword || password === 'Winsley123';
 
     if (isValidUser && isValidPass) {
       const authUser = {
@@ -30,16 +41,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       };
       localStorage.setItem('sumaq_auth_user', JSON.stringify(authUser));
       onLoginSuccess(authUser);
-    } else if (!isValidUser) {
-      setErrorMsg('Usuario incorrecto. El usuario administrador es: admin');
     } else {
-      setErrorMsg('Contraseña incorrecta. (Clave oficial: Winsley123)');
+      setErrorMsg('Usuario o contraseña incorrectos.');
     }
   };
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-[#E2F1F8] via-[#F0F8FB] to-[#D5EBF5]">
-      {/* Contenedor Tarjeta de Login (Estilo idéntico a referencia capturada) */}
+      {/* Contenedor Tarjeta de Login */}
       <div className="w-full max-w-sm bg-white rounded-3xl p-7 sm:p-9 shadow-2xl border border-sky-100/80 animate-in fade-in zoom-in-95 duration-200">
         
         {/* 1. Logo SUMAQ */}
@@ -57,8 +66,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           </p>
         </div>
 
-        {/* 2. Formulario de Credenciales */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* 2. Formulario de Credenciales con autocompletado desactivado */}
+        <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
           
           {errorMsg && (
             <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold text-center animate-in fade-in">
@@ -75,10 +84,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               <User className="w-5 h-5 text-slate-400 shrink-0 mr-2.5" />
               <input
                 type="text"
+                name="username"
+                autoComplete="off"
                 required
                 value={usuario}
                 onChange={(e) => setUsuario(e.target.value)}
-                placeholder="admin"
+                placeholder="Ingresa tu usuario"
                 className="w-full text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-none bg-transparent"
               />
             </div>
@@ -93,10 +104,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               <Lock className="w-5 h-5 text-slate-400 shrink-0 mr-2.5" />
               <input
                 type={showPassword ? 'text' : 'password'}
+                name="password"
+                autoComplete="new-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Winsley123"
+                placeholder="••••••••"
                 className="w-full text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-none bg-transparent"
               />
               <button
@@ -132,27 +145,22 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
         </div>
       </div>
 
-      {/* Modal Ayuda Recuperación de Contraseña */}
+      {/* Modal Seguro de Recuperación */}
       {showForgotModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
           <div className="w-full max-w-xs bg-white rounded-2xl p-5 shadow-2xl border border-slate-200 text-center space-y-3">
-            <h4 className="text-sm font-black text-slate-900">Credenciales del Sistema</h4>
-            <p className="text-xs text-slate-600">
-              Las credenciales de acceso para SUMAQ son:
-            </p>
-            <div className="p-3 bg-slate-100 rounded-xl space-y-1 text-left font-mono text-xs">
-              <div><span className="text-slate-400 font-sans">Usuario:</span> <b>admin</b></div>
-              <div><span className="text-slate-400 font-sans">Clave:</span> <b className="text-[#007A87]">Winsley123</b></div>
+            <div className="w-10 h-10 rounded-full bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
+              <ShieldAlert className="w-5 h-5" />
             </div>
+            <h4 className="text-sm font-black text-slate-900">Seguridad de la Cuenta</h4>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Por motivos de seguridad, las contraseñas son confidenciales. Si olvidaste tu contraseña, solicita la clave al administrador general del sistema de SUMAQ.
+            </p>
             <button
-              onClick={() => {
-                setUsuario('admin');
-                setPassword('Winsley123');
-                setShowForgotModal(false);
-              }}
-              className="w-full py-2 bg-[#007A87] hover:bg-[#006670] text-white text-xs font-bold rounded-xl"
+              onClick={() => setShowForgotModal(false)}
+              className="w-full py-2 bg-[#007A87] hover:bg-[#006670] text-white text-xs font-bold rounded-xl cursor-pointer"
             >
-              Usar credenciales oficiales
+              Entendido
             </button>
           </div>
         </div>
