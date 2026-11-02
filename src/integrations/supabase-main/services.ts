@@ -689,30 +689,120 @@ export const deleteServicioRecord = async (id: string): Promise<void> => {
   notifyServiciosChange();
 };
 
-const saveClienteRecord = async (cliente: Partial<Cliente>) => {
+export const fetchClientes = async (): Promise<Cliente[]> => {
   const supa = getMainSupabase();
-  if (supa && cliente.telefono) {
+  if (supa) {
     try {
-      await supa
+      const { data, error } = await supa
         .from('clientes')
-        .upsert([{
-          nombre: cliente.nombre,
-          telefono: cliente.telefono,
-          distrito: cliente.distrito,
-          direccion: cliente.direccion
-        }], { onConflict: 'telefono' });
-    } catch (e) {}
+        .select('*')
+        .order('nombre', { ascending: true });
+
+      if (!error && data) {
+        localStorage.setItem('sumaq_clientes_local', JSON.stringify(data));
+        return data;
+      }
+    } catch (e) {
+      console.warn('Error obteniendo clientes de Supabase:', e);
+    }
   }
 
-  const raw = localStorage.getItem('sumaq_clientes_local');
-  const clientes: Cliente[] = raw ? JSON.parse(raw) : [];
-  const idx = clientes.findIndex(c => c.telefono === cliente.telefono);
-  if (idx >= 0) {
-    clientes[idx] = { ...clientes[idx], ...(cliente as Cliente) };
-  } else {
-    clientes.push({ ...(cliente as Cliente), id: `cli-${Date.now()}` });
+  try {
+    const raw = localStorage.getItem('sumaq_clientes_local');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
   }
-  localStorage.setItem('sumaq_clientes_local', JSON.stringify(clientes));
+};
+
+export const saveCliente = async (cliente: Partial<Cliente>): Promise<Cliente> => {
+  const supa = getMainSupabase();
+  const payload = {
+    nombre: (cliente.nombre || '').trim(),
+    telefono: (cliente.telefono || '').trim(),
+    distrito: (cliente.distrito || '').trim(),
+    direccion: (cliente.direccion || '').trim()
+  };
+
+  let saved: Cliente = {
+    id: cliente.id || `cli-${Date.now()}`,
+    nombre: payload.nombre,
+    telefono: payload.telefono,
+    distrito: payload.distrito,
+    direccion: payload.direccion,
+    created_at: cliente.created_at || new Date().toISOString()
+  };
+
+  if (supa) {
+    try {
+      if (cliente.id && !cliente.id.startsWith('cli-')) {
+        const { data, error } = await supa
+          .from('clientes')
+          .update(payload)
+          .eq('id', cliente.id)
+          .select()
+          .single();
+        if (!error && data) {
+          saved = data;
+        }
+      } else {
+        const { data, error } = await supa
+          .from('clientes')
+          .insert([payload])
+          .select()
+          .single();
+        if (!error && data) {
+          saved = data;
+        }
+      }
+    } catch (e) {
+      console.warn('Error guardando cliente en Supabase:', e);
+    }
+  }
+
+  // Actualizar cache local
+  try {
+    const raw = localStorage.getItem('sumaq_clientes_local');
+    const list: Cliente[] = raw ? JSON.parse(raw) : [];
+    const idx = list.findIndex(c => c.id === saved.id || (c.telefono && c.telefono === saved.telefono));
+    if (idx >= 0) {
+      list[idx] = saved;
+    } else {
+      list.unshift(saved);
+    }
+    localStorage.setItem('sumaq_clientes_local', JSON.stringify(list));
+  } catch {}
+
+  notifyServiciosChange();
+  return saved;
+};
+
+export const deleteCliente = async (id: string, telefono?: string): Promise<void> => {
+  const supa = getMainSupabase();
+  if (supa) {
+    try {
+      if (id && !id.startsWith('cli-')) {
+        await supa.from('clientes').delete().eq('id', id);
+      } else if (telefono) {
+        await supa.from('clientes').delete().eq('telefono', telefono);
+      }
+    } catch (e) {
+      console.warn('Error eliminando cliente en Supabase:', e);
+    }
+  }
+
+  try {
+    const raw = localStorage.getItem('sumaq_clientes_local');
+    const list: Cliente[] = raw ? JSON.parse(raw) : [];
+    const filtered = list.filter(c => c.id !== id && (!telefono || c.telefono !== telefono));
+    localStorage.setItem('sumaq_clientes_local', JSON.stringify(filtered));
+  } catch {}
+
+  notifyServiciosChange();
+};
+
+const saveClienteRecord = async (cliente: Partial<Cliente>) => {
+  return await saveCliente(cliente);
 };
 
 // =========================================================================

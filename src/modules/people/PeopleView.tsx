@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Users, Plus, Phone, Briefcase, Shield, 
-  DollarSign, Check, X, AlertCircle, Sparkles, Building, Trash2, Truck 
+  Users, User, Plus, Phone, Check, X, AlertCircle, 
+  Trash2, Truck, Search, MapPin, MessageCircle, Pencil 
 } from 'lucide-react';
-import { Operario, Vehiculo } from '../../types';
+import { Operario, Vehiculo, Cliente } from '../../types';
 import { fetchOperarios, saveOperarioToSupabase, deleteOperario } from '../../integrations/supabase-operators/operators';
 import { isOperatorsSupabaseConfigured } from '../../integrations/supabase-operators/client';
 import { 
   getVansPersonalizadas, 
   addVanToFlota, 
-  deleteVanFromFlota 
+  deleteVanFromFlota,
+  fetchClientes,
+  saveCliente,
+  deleteCliente,
+  DISTRITOS_LIMA
 } from '../../integrations/supabase-main/services';
 import { formatMontoSoles } from '../../utils/businessRules';
 
@@ -19,8 +23,8 @@ const COLORES = [
 ];
 
 export const PeopleView: React.FC = () => {
-  // Pestaña activa: Colaboradores u Operarios vs Vans de la Flota
-  const [subtab, setSubtab] = useState<'colaboradores' | 'vans'>('colaboradores');
+  // Pestaña activa: Colaboradores, Clientes o Vans de la Flota
+  const [subtab, setSubtab] = useState<'colaboradores' | 'clientes' | 'vans'>('colaboradores');
 
   // Estado para Operarios
   const [personas, setPersonas] = useState<Operario[]>([]);
@@ -40,6 +44,18 @@ export const PeopleView: React.FC = () => {
   const [color, setColor] = useState<string>('#00CED1');
   const [guardando, setGuardando] = useState<boolean>(false);
 
+  // Estado para Clientes
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [cargandoClientes, setCargandoClientes] = useState<boolean>(false);
+  const [busquedaCliente, setBusquedaCliente] = useState<string>('');
+  const [mostrarModalCliente, setMostrarModalCliente] = useState<boolean>(false);
+  const [editandoCliente, setEditandoCliente] = useState<Cliente | null>(null);
+  const [nombreClienteInput, setNombreClienteInput] = useState<string>('');
+  const [telefonoClienteInput, setTelefonoClienteInput] = useState<string>('');
+  const [distritoClienteInput, setDistritoClienteInput] = useState<string>('Santiago de Surco');
+  const [direccionClienteInput, setDireccionClienteInput] = useState<string>('');
+  const [guardandoCliente, setGuardandoCliente] = useState<boolean>(false);
+
   // Estado para Vans de la Flota
   const [vans, setVans] = useState<Vehiculo[]>(() => getVansPersonalizadas());
   const [mostrarModalVan, setMostrarModalVan] = useState<boolean>(false);
@@ -49,17 +65,26 @@ export const PeopleView: React.FC = () => {
 
   const cargar = async () => {
     setCargando(true);
-    const data = await fetchOperarios();
-    setPersonas(data);
-    setVans(getVansPersonalizadas());
-    setCargando(false);
+    setCargandoClientes(true);
+    try {
+      const [opsData, clisData] = await Promise.all([
+        fetchOperarios(),
+        fetchClientes()
+      ]);
+      setPersonas(opsData);
+      setClientes(clisData);
+      setVans(getVansPersonalizadas());
+    } finally {
+      setCargando(false);
+      setCargandoClientes(false);
+    }
   };
 
   useEffect(() => {
     cargar();
   }, []);
 
-  // Operarios handlers
+  // ---------------- Operarios handlers ----------------
   const abrirNuevoColaborador = () => {
     setEditando(null);
     setNombres('');
@@ -133,7 +158,81 @@ export const PeopleView: React.FC = () => {
     }
   };
 
-  // Vans handlers
+  // ---------------- Clientes handlers ----------------
+  const abrirNuevoCliente = () => {
+    setEditandoCliente(null);
+    setNombreClienteInput('');
+    setTelefonoClienteInput('');
+    setDistritoClienteInput('Santiago de Surco');
+    setDireccionClienteInput('');
+    setMostrarModalCliente(true);
+  };
+
+  const abrirEditarCliente = (cli: Cliente) => {
+    setEditandoCliente(cli);
+    setNombreClienteInput(cli.nombre || '');
+    setTelefonoClienteInput(cli.telefono || '');
+    setDistritoClienteInput(cli.distrito || 'Santiago de Surco');
+    setDireccionClienteInput(cli.direccion || '');
+    setMostrarModalCliente(true);
+  };
+
+  const handleGuardarCliente = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nombreClienteInput.trim() || !telefonoClienteInput.trim()) {
+      alert('Por favor ingresa nombre y teléfono del cliente');
+      return;
+    }
+
+    setGuardandoCliente(true);
+    try {
+      await saveCliente({
+        id: editandoCliente ? editandoCliente.id : undefined,
+        nombre: nombreClienteInput.trim(),
+        telefono: telefonoClienteInput.trim(),
+        distrito: distritoClienteInput.trim(),
+        direccion: direccionClienteInput.trim()
+      });
+
+      setMostrarModalCliente(false);
+      const updated = await fetchClientes();
+      setClientes(updated);
+    } catch (err) {
+      console.error('Error guardando cliente:', err);
+    } finally {
+      setGuardandoCliente(false);
+    }
+  };
+
+  const handleEliminarCliente = async (cli: Cliente, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const conf = window.confirm(`¿Estás seguro de eliminar al cliente "${cli.nombre}"?`);
+    if (!conf) return;
+
+    try {
+      await deleteCliente(cli.id, cli.telefono);
+      if (editandoCliente?.id === cli.id) {
+        setMostrarModalCliente(false);
+      }
+      const updated = await fetchClientes();
+      setClientes(updated);
+    } catch (err) {
+      console.error('Error eliminando cliente:', err);
+    }
+  };
+
+  const clientesFiltrados = clientes.filter(c => {
+    if (!busquedaCliente.trim()) return true;
+    const term = busquedaCliente.toLowerCase().trim();
+    return (
+      (c.nombre && c.nombre.toLowerCase().includes(term)) ||
+      (c.telefono && c.telefono.includes(term)) ||
+      (c.distrito && c.distrito.toLowerCase().includes(term)) ||
+      (c.direccion && c.direccion.toLowerCase().includes(term))
+    );
+  });
+
+  // ---------------- Vans handlers ----------------
   const handleGuardarVan = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nombreVanInput.trim()) return;
@@ -158,12 +257,19 @@ export const PeopleView: React.FC = () => {
       <div className="sticky top-13 z-20 bg-[#0A0E11]/95 backdrop-blur-md px-4 py-3.5 border-b border-[#252D38] flex items-center justify-between">
         <div>
           <h2 className="text-base font-extrabold text-[#F0F4F8] flex items-center gap-1.5">
-            {subtab === 'colaboradores' ? (
+            {subtab === 'colaboradores' && (
               <>
                 <Users className="w-4 h-4 text-[#00CED1]" />
                 <span>Colaboradores / Personal</span>
               </>
-            ) : (
+            )}
+            {subtab === 'clientes' && (
+              <>
+                <User className="w-4 h-4 text-emerald-400" />
+                <span>Directorio de Clientes</span>
+              </>
+            )}
+            {subtab === 'vans' && (
               <>
                 <Truck className="w-4 h-4 text-amber-400" />
                 <span>Vans de la Flota (Choferes)</span>
@@ -171,13 +277,13 @@ export const PeopleView: React.FC = () => {
             )}
           </h2>
           <p className="text-[10px] text-[#8A9BB0]">
-            {subtab === 'colaboradores' 
-              ? 'Gestión de Operarios SUMAQ' 
-              : 'Vans asignables a los servicios (ej. VAN Manuel)'}
+            {subtab === 'colaboradores' && 'Gestión de Operarios SUMAQ'}
+            {subtab === 'clientes' && 'Agenda y Directorio de Clientes registrados'}
+            {subtab === 'vans' && 'Vans asignables a los servicios (ej. VAN Manuel)'}
           </p>
         </div>
 
-        {subtab === 'colaboradores' ? (
+        {subtab === 'colaboradores' && (
           <button
             onClick={abrirNuevoColaborador}
             className="py-2 px-3 bg-[#00CED1] hover:brightness-110 active:scale-95 text-slate-950 text-xs font-black rounded-xl flex items-center gap-1.5 shadow-md shadow-[#00CED1]/20 transition"
@@ -185,7 +291,19 @@ export const PeopleView: React.FC = () => {
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>Nuevo</span>
           </button>
-        ) : (
+        )}
+
+        {subtab === 'clientes' && (
+          <button
+            onClick={abrirNuevoCliente}
+            className="py-2 px-3 bg-emerald-500 hover:brightness-110 active:scale-95 text-slate-950 text-xs font-black rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>Nuevo Cliente</span>
+          </button>
+        )}
+
+        {subtab === 'vans' && (
           <button
             onClick={() => {
               setNombreVanInput('');
@@ -200,32 +318,45 @@ export const PeopleView: React.FC = () => {
       </div>
 
       <div className="p-4 space-y-3.5">
-        {/* Selector de Subpestañas: Colaboradores vs Vans */}
-        <div className="flex bg-[#111418] p-1 rounded-2xl border border-[#252D38]">
+        {/* Selector de Subpestañas: Colaboradores vs Clientes vs Vans */}
+        <div className="flex bg-[#111418] p-1 rounded-2xl border border-[#252D38] gap-1">
           <button
             type="button"
             onClick={() => setSubtab('colaboradores')}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 ${
               subtab === 'colaboradores'
                 ? 'bg-[#181D22] text-[#00CED1] shadow-xs border border-[#2E3847]'
                 : 'text-[#8A9BB0] hover:text-[#F0F4F8]'
             }`}
           >
             <Users className="w-3.5 h-3.5" />
-            <span>Colaboradores ({personas.length})</span>
+            <span className="truncate">Personal ({personas.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSubtab('clientes')}
+            className={`flex-1 py-2 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 ${
+              subtab === 'clientes'
+                ? 'bg-[#181D22] text-emerald-400 shadow-xs border border-[#2E3847]'
+                : 'text-[#8A9BB0] hover:text-[#F0F4F8]'
+            }`}
+          >
+            <User className="w-3.5 h-3.5" />
+            <span className="truncate">Clientes ({clientes.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSubtab('vans')}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 ${
               subtab === 'vans'
                 ? 'bg-[#181D22] text-amber-400 shadow-xs border border-[#2E3847]'
                 : 'text-[#8A9BB0] hover:text-[#F0F4F8]'
             }`}
           >
             <Truck className="w-3.5 h-3.5" />
-            <span>Vans de la Flota ({vans.length})</span>
+            <span className="truncate">Vans ({vans.length})</span>
           </button>
         </div>
 
@@ -250,7 +381,7 @@ export const PeopleView: React.FC = () => {
               <div className="text-center py-16 bg-[#181D22] rounded-3xl border border-[#252D38] p-6 space-y-3">
                 <Users className="w-12 h-12 text-[#4A5A70] mx-auto" />
                 <p className="text-sm font-bold text-[#F0F4F8]">No hay colaboradores registrados</p>
-                <p className="text-xs text-[#8A9BB0]">Agrega a las personas que atenderán las órdenes.</p>
+                <p className="text-xs text-[#8A9BB0]">Agrega a las personas que atenderán las órdenes con "+ Nuevo".</p>
               </div>
             ) : (
               personas.map(p => (
@@ -316,6 +447,129 @@ export const PeopleView: React.FC = () => {
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        )}
+
+        {/* ---------------- PESTAÑA: CLIENTES ---------------- */}
+        {subtab === 'clientes' && (
+          <div className="space-y-3.5">
+            {/* Buscador de clientes */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-[#8A9BB0] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Buscar cliente por nombre, teléfono o distrito..."
+                value={busquedaCliente}
+                onChange={(e) => setBusquedaCliente(e.target.value)}
+                className="w-full pl-9 pr-8 py-2.5 text-xs font-semibold bg-[#181D22] border border-[#252D38] focus:border-emerald-500 rounded-xl text-[#F0F4F8] placeholder-[#5A6D82] focus:outline-none transition"
+              />
+              {busquedaCliente && (
+                <button
+                  type="button"
+                  onClick={() => setBusquedaCliente('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A9BB0] hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {cargandoClientes ? (
+              <div className="py-20 text-center text-xs text-[#8A9BB0]">Cargando directorio de clientes...</div>
+            ) : clientesFiltrados.length === 0 ? (
+              <div className="text-center py-16 bg-[#181D22] rounded-3xl border border-[#252D38] p-6 space-y-3">
+                <User className="w-12 h-12 text-[#4A5A70] mx-auto" />
+                <p className="text-sm font-bold text-[#F0F4F8]">
+                  {busquedaCliente ? 'No se encontraron clientes' : 'No hay clientes registrados'}
+                </p>
+                <p className="text-xs text-[#8A9BB0]">
+                  {busquedaCliente 
+                    ? 'Intenta con otro término o número de teléfono.' 
+                    : 'Los clientes se guardan automáticamente al agendar o puedes agregar uno nuevo con "+ Nuevo Cliente".'}
+                </p>
+              </div>
+            ) : (
+              clientesFiltrados.map(c => {
+                const cleanTel = (c.telefono || '').replace(/\D/g, '');
+                return (
+                  <div
+                    key={c.id || c.telefono}
+                    onClick={() => abrirEditarCliente(c)}
+                    className="bg-[#181D22] hover:bg-[#1E2530] rounded-2xl p-3.5 border border-[#252D38] hover:border-[#3D4E63] shadow-sm flex items-center justify-between gap-3 cursor-pointer transition active:scale-[0.99] group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-black text-sm shrink-0">
+                        {c.nombre ? c.nombre.trim().charAt(0).toUpperCase() : 'C'}
+                      </div>
+
+                      <div className="min-w-0 space-y-0.5">
+                        <h4 className="font-extrabold text-[#F0F4F8] text-sm truncate">
+                          {c.nombre || 'Cliente sin nombre'}
+                        </h4>
+
+                        <div className="flex items-center gap-1.5 text-xs text-[#8A9BB0] flex-wrap">
+                          {c.distrito && (
+                            <span className="font-bold text-emerald-400 flex items-center gap-1">
+                              <MapPin className="w-3 h-3 shrink-0" />
+                              {c.distrito}
+                            </span>
+                          )}
+                          {c.distrito && c.direccion && <span>•</span>}
+                          {c.direccion && (
+                            <span className="truncate max-w-[170px] text-[#8A9BB0]">{c.direccion}</span>
+                          )}
+                        </div>
+
+                        {c.telefono && (
+                          <p className="text-[11px] text-[#8A9BB0] font-mono">
+                            📞 {c.telefono}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {cleanTel && (
+                        <a
+                          href={`https://wa.me/51${cleanTel}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 text-emerald-400 hover:bg-emerald-500/20 rounded-xl transition"
+                          title="Enviar WhatsApp"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </a>
+                      )}
+                      {cleanTel && (
+                        <a
+                          href={`tel:${cleanTel}`}
+                          className="p-2 text-sky-400 hover:bg-sky-500/20 rounded-xl transition"
+                          title="Llamar por teléfono"
+                        >
+                          <Phone className="w-4 h-4" />
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => abrirEditarCliente(c)}
+                        className="p-2 text-[#8A9BB0] hover:text-[#F0F4F8] hover:bg-[#252D38] rounded-xl transition"
+                        title="Editar cliente"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleEliminarCliente(c, e)}
+                        className="p-2 text-[#4A5A70] hover:text-rose-400 hover:bg-rose-950/40 rounded-xl transition"
+                        title="Eliminar cliente"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         )}
@@ -538,6 +792,110 @@ export const PeopleView: React.FC = () => {
                   className="flex-1 py-2.5 bg-[#00CED1] hover:brightness-110 text-slate-950 font-black text-xs rounded-xl shadow-md shadow-[#00CED1]/25"
                 >
                   {guardando ? 'Guardando...' : (editando ? 'Guardar Cambios' : 'Registrar Colaborador')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Crear / Editar Cliente */}
+      {mostrarModalCliente && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in">
+          <div className="w-full max-w-md bg-[#181D22] rounded-t-3xl sm:rounded-2xl border border-[#252D38] p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#252D38] pb-3">
+              <div className="flex items-center gap-2">
+                <User className="w-5 h-5 text-emerald-400" />
+                <h3 className="font-extrabold text-[#F0F4F8] text-sm">
+                  {editandoCliente ? 'Editar Cliente' : 'Nuevo Cliente'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setMostrarModalCliente(false)}
+                className="w-8 h-8 rounded-full bg-[#111418] flex items-center justify-center text-[#8A9BB0]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleGuardarCliente} className="space-y-3.5">
+              <div>
+                <label className="text-[10px] font-bold text-[#8A9BB0] mb-1 block">Nombre completo *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej. María Pérez"
+                  value={nombreClienteInput}
+                  onChange={(e) => setNombreClienteInput(e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:border-emerald-500 focus:outline-none"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-[#8A9BB0] mb-1 block">Teléfono móvil *</label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="Ej. 999888777"
+                  value={telefonoClienteInput}
+                  onChange={(e) => setTelefonoClienteInput(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                  className="w-full px-3 py-2 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-[#8A9BB0] mb-1 block">Distrito</label>
+                <select
+                  value={distritoClienteInput}
+                  onChange={(e) => setDistritoClienteInput(e.target.value)}
+                  className="w-full px-2.5 py-2 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:border-emerald-500 focus:outline-none"
+                >
+                  {DISTRITOS_LIMA.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-[#8A9BB0] mb-1 block">Dirección completa</label>
+                <input
+                  type="text"
+                  placeholder="Ej. Av. Benavides 1234, Dpto 501"
+                  value={direccionClienteInput}
+                  onChange={(e) => setDireccionClienteInput(e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Botón de eliminar si está editando */}
+              {editandoCliente && (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleEliminarCliente(editandoCliente)}
+                    className="w-full py-2 bg-rose-950/40 hover:bg-rose-950/80 text-rose-400 border border-rose-800/60 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Eliminar Cliente</span>
+                  </button>
+                </div>
+              )}
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMostrarModalCliente(false)}
+                  className="flex-1 py-2.5 bg-[#111418] text-[#8A9BB0] font-bold text-xs rounded-xl border border-[#252D38]"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={guardandoCliente}
+                  className="flex-1 py-2.5 bg-emerald-500 hover:brightness-110 text-slate-950 font-black text-xs rounded-xl shadow-md shadow-emerald-500/25 transition"
+                >
+                  {guardandoCliente ? 'Guardando...' : (editandoCliente ? 'Guardar Cambios' : 'Registrar Cliente')}
                 </button>
               </div>
             </form>
