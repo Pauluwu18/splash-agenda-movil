@@ -1,69 +1,29 @@
 import { Operario } from '../../types';
 import { getOperatorsSupabase, isOperatorsSupabaseConfigured } from './client';
 
-const DEFAULT_OPERARIOS: Operario[] = [
-  {
-    id: '65ce6eb7-31fe-4821-886f-6a05a962015a',
-    dni: '',
-    nombres: 'Carlos',
-    apellidos: 'Mendoza',
-    nombre_completo: 'Carlos Mendoza',
-    telefono: '987111222',
-    rol: 'Líder',
-    sucursal: 'Las Flores',
-    estado: 'ACTIVO',
-    sueldo_por_servicio: 35.0,
-    en_capacitacion: false,
-    color: '#0284c7'
-  },
-  {
-    id: '21caba2d-f700-4268-bffa-c7a5b3ea15e9',
-    dni: '',
-    nombres: 'Miguel Ángel',
-    apellidos: 'Quispe',
-    nombre_completo: 'Miguel Ángel Quispe',
-    telefono: '987333444',
-    rol: 'Operario',
-    sucursal: 'Las Flores',
-    estado: 'ACTIVO',
-    sueldo_por_servicio: 25.0,
-    en_capacitacion: false,
-    color: '#0d9488'
-  },
-  {
-    id: 'b7d22305-0d97-40a8-b3ff-6d4c78ec62db',
-    dni: '',
-    nombres: 'José',
-    apellidos: 'Ramírez',
-    nombre_completo: 'José Ramírez',
-    telefono: '987555666',
-    rol: 'Apoyo',
-    sucursal: 'Las Flores',
-    estado: 'ACTIVO',
-    sueldo_por_servicio: 25.0,
-    en_capacitacion: false,
-    color: '#f59e0b'
-  },
-  {
-    id: 'cbf6fe50-6902-4c40-8edf-bfbb9358adeb',
-    dni: '',
-    nombres: 'David',
-    apellidos: 'Flores',
-    nombre_completo: 'David Flores',
-    telefono: '987777888',
-    rol: 'Operario',
-    sucursal: 'Las Flores',
-    estado: 'ACTIVO',
-    sueldo_por_servicio: 25.0,
-    en_capacitacion: false,
-    color: '#8b5cf6'
-  }
+const DEFAULT_OPERARIOS: Operario[] = [];
+
+const MOCK_IDS = [
+  '65ce6eb7-31fe-4821-886f-6a05a962015a',
+  '21caba2d-f700-4268-bffa-c7a5b3ea15e9',
+  'b7d22305-0d97-40a8-b3ff-6d4c78ec62db',
+  'cbf6fe50-6902-4c40-8edf-bfbb9358adeb'
 ];
 
 const getLocalOperators = (): Operario[] => {
   try {
     const raw = localStorage.getItem('sumaq_operators_local');
-    return raw ? JSON.parse(raw) : DEFAULT_OPERARIOS;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.filter((op: any) => !MOCK_IDS.includes(op.id));
+        if (cleaned.length !== parsed.length) {
+          localStorage.setItem('sumaq_operators_local', JSON.stringify(cleaned));
+        }
+        return cleaned;
+      }
+    }
+    return DEFAULT_OPERARIOS;
   } catch {
     return DEFAULT_OPERARIOS;
   }
@@ -82,7 +42,7 @@ export const fetchOperarios = async (): Promise<Operario[]> => {
         .select('*')
         .order('nombre', { ascending: true });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const mapped: Operario[] = data.map((d: any) => {
           const rawName = (d.nombre || '').trim();
           const parts = rawName.split(' ');
