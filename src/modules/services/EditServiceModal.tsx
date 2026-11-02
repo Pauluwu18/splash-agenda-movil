@@ -73,7 +73,7 @@ export const EditServiceModal: React.FC<EditServiceModalProps> = ({
         precio_final: esRectificacion ? 0 : (Number(precioFinal) || 0),
         es_rectificacion: esRectificacion,
         es_taxi: movilidad.toUpperCase().includes('TAXI'),
-        vehiculo_id: null,
+        vehiculo_id: undefined,
         van_nombre: movilidad === 'Sin movilidad' ? '' : movilidad,
         comentarios: comentarios.trim()
       });

@@ -69,7 +69,7 @@ export const AgendaCard: React.FC<AgendaCardProps> = ({
 
     await updateServicio(servicio.id, {
       operario_ids: newIds,
-      operario_id: newIds[0] || null
+      operario_id: newIds[0] || undefined
     });
     setShowAssignOperario(false);
     onUpdateSuccess();
@@ -77,7 +77,7 @@ export const AgendaCard: React.FC<AgendaCardProps> = ({
 
   const handleAsignarVan = async (van: Vehiculo | null) => {
     await updateServicio(servicio.id, {
-      vehiculo_id: van?.id || null,
+      vehiculo_id: van?.id || undefined,
       van_nombre: van?.nombre || '',
       es_taxi: false
     });

@@ -527,7 +527,7 @@ export const reorderServicios = async (reordered: ServicioAgenda[]): Promise<voi
 
     // Actualizar Supabase
     if (supa && !s.id.startsWith('srv-')) {
-      supa.from('servicios_agenda').update({ orden: i }).eq('id', s.id).catch(() => {});
+      try { await supa.from('servicios_agenda').update({ orden: i }).eq('id', s.id); } catch (e) {}
     }
   }
 
@@ -548,7 +548,9 @@ export const updateServicioOperario = async (
   const item = list.find(s => s.id === servicioId);
 
   const van = item?.van_nombre || (item?.es_taxi ? 'TAXI 1' : 'Sin movilidad');
-  const newComentarios = encodeMetadataComentarios(item?.comentarios, van, operarioId);
+  const dec = decodeMetadataComentarios(item?.comentarios);
+  const tel2 = item?.telefono_secundario || dec.tel2;
+  const newComentarios = encodeMetadataComentarios(dec.comentarios, van, operarioId, tel2);
 
   if (supa && !servicioId.startsWith('srv-')) {
     try {
@@ -576,7 +578,9 @@ export const updateServicioMovilidad = async (servicioId: string, vanNombre: str
   const item = list.find(s => s.id === servicioId);
 
   const opId = item?.operario_ids?.[0] || item?.operario_id || '';
-  const newComentarios = encodeMetadataComentarios(item?.comentarios, vanNombre, opId);
+  const dec = decodeMetadataComentarios(item?.comentarios);
+  const tel2 = item?.telefono_secundario || dec.tel2;
+  const newComentarios = encodeMetadataComentarios(dec.comentarios, vanNombre, opId, tel2);
 
   if (supa && !servicioId.startsWith('srv-')) {
     try {

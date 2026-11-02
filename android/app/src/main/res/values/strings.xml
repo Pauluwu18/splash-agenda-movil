@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SUMAQ Agenda</string>
+    <string name="title_activity_main">SUMAQ Agenda</string>
+    <string name="package_name">com.sumaq.agenda</string>
+    <string name="custom_url_scheme">com.sumaq.agenda</string>
+</resources>
