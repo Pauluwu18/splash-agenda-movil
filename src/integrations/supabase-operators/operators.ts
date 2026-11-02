@@ -62,7 +62,7 @@ const DEFAULT_OPERARIOS: Operario[] = [
 
 const getLocalOperators = (): Operario[] => {
   try {
-    const raw = localStorage.getItem('splash_operators_local');
+    const raw = localStorage.getItem('sumaq_operators_local');
     return raw ? JSON.parse(raw) : DEFAULT_OPERARIOS;
   } catch {
     return DEFAULT_OPERARIOS;
@@ -70,7 +70,7 @@ const getLocalOperators = (): Operario[] => {
 };
 
 const setLocalOperators = (list: Operario[]) => {
-  localStorage.setItem('splash_operators_local', JSON.stringify(list));
+  localStorage.setItem('sumaq_operators_local', JSON.stringify(list));
 };
 
 export const fetchOperarios = async (): Promise<Operario[]> => {

@@ -14,8 +14,8 @@ export const normalizeSupabaseUrl = (raw: string): string => {
 export const getMainSupabaseConfig = () => {
   const envUrl = import.meta.env.VITE_SUPABASE_MAIN_URL || import.meta.env.VITE_SUPABASE_URL;
   const envKey = import.meta.env.VITE_SUPABASE_MAIN_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
-  const localUrl = localStorage.getItem('splash_supa_main_url');
-  const localKey = localStorage.getItem('splash_supa_main_key');
+  const localUrl = localStorage.getItem('sumaq_supa_main_url');
+  const localKey = localStorage.getItem('sumaq_supa_main_key');
 
   const rawUrl = (envUrl && envUrl.trim() !== '') 
     ? envUrl 

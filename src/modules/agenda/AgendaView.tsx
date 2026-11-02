@@ -280,7 +280,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
           </div>
         </div>
 
-        {/* 2. Pestañas de Turno con Barra Indicadora Turquesa (Idéntico a captura SPLASH/SUMAQ) */}
+        {/* 2. Pestañas de Turno con Barra Indicadora Turquesa (Idéntico a captura SUMAQ) */}
         <div className="flex items-center border-b border-[#252D38] -mx-4 px-4 gap-6 pt-1">
           {[
             { id: 'Mañana' as TurnoHorario, label: 'Mañana', count: countManana, icon: '☀️' },

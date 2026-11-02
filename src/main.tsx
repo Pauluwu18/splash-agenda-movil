@@ -49,7 +49,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
         const keys = await caches.keys();
         await Promise.all(keys.map(k => caches.delete(k)));
       }
-      localStorage.removeItem('splash_last_sync_time');
       localStorage.removeItem('sumaq_last_sync_time');
       sessionStorage.clear();
     } catch (_) {}

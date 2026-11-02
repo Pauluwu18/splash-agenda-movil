@@ -13,7 +13,7 @@ export const EMPRESAS_DEFAULT: Empresa[] = [
   { id: 'emp-2', nombre: 'SUMAQ Limpieza', color: '#60A5FA', activo: true },
   { id: 'emp-3', nombre: 'SUMAQ Flota', color: '#FB923C', activo: true },
   { id: 'emp-4', nombre: 'CLEANIX', color: '#A855F7', activo: true },
-  { id: 'emp-5', nombre: 'SPLASH', color: '#22C55E', activo: true }
+  { id: 'emp-5', nombre: 'SUMAQ Express', color: '#22C55E', activo: true }
 ];
 
 export const CANALES_DEFAULT: CanalOrigen[] = [
@@ -284,7 +284,7 @@ export const decodeMetadataComentarios = (comentarios = '') => {
 // Fallback local store
 const getLocalServices = (): ServicioAgenda[] => {
   try {
-    const raw = localStorage.getItem('splash_servicios_local');
+    const raw = localStorage.getItem('sumaq_servicios_local');
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -292,7 +292,7 @@ const getLocalServices = (): ServicioAgenda[] => {
 };
 
 const setLocalServices = (list: ServicioAgenda[]) => {
-  localStorage.setItem('splash_servicios_local', JSON.stringify(list));
+  localStorage.setItem('sumaq_servicios_local', JSON.stringify(list));
 };
 
 // =========================================================================
@@ -389,7 +389,7 @@ export const buscarClientePorTelefono = async (telefono: string): Promise<Client
     }
   }
 
-  const raw = localStorage.getItem('splash_clientes_local');
+  const raw = localStorage.getItem('sumaq_clientes_local');
   const clientes: Cliente[] = raw ? JSON.parse(raw) : [];
   return clientes.find(c => c.telefono && c.telefono.includes(clean)) || null;
 };
@@ -704,7 +704,7 @@ const saveClienteRecord = async (cliente: Partial<Cliente>) => {
     } catch (e) {}
   }
 
-  const raw = localStorage.getItem('splash_clientes_local');
+  const raw = localStorage.getItem('sumaq_clientes_local');
   const clientes: Cliente[] = raw ? JSON.parse(raw) : [];
   const idx = clientes.findIndex(c => c.telefono === cliente.telefono);
   if (idx >= 0) {
@@ -712,7 +712,7 @@ const saveClienteRecord = async (cliente: Partial<Cliente>) => {
   } else {
     clientes.push({ ...(cliente as Cliente), id: `cli-${Date.now()}` });
   }
-  localStorage.setItem('splash_clientes_local', JSON.stringify(clientes));
+  localStorage.setItem('sumaq_clientes_local', JSON.stringify(clientes));
 };
 
 // =========================================================================
@@ -777,7 +777,7 @@ export const subscribeToServiciosRealtime = (onUpdate: () => void): (() => void)
   }
 
   const handleStorage = (e: StorageEvent) => {
-    if (e.key === 'sumaq_last_sync_time' || e.key === 'splash_servicios_local') {
+    if (e.key === 'sumaq_last_sync_time' || e.key === 'sumaq_servicios_local') {
       onUpdate();
     }
   };

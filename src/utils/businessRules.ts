@@ -44,7 +44,7 @@ export const getTodayKey = (d = new Date()): string => {
 };
 
 /**
- * Regla original de SPLASH:
+ * Regla original de SUMAQ:
  * Los servicios de mañana programados después de las 18:00 de hoy
  * requieren asignación manual por sucursal.
  */

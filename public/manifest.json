@@ -1,7 +1,7 @@
 {
-  "name": "SPLASH Agenda Mobile",
-  "short_name": "SPLASH Agenda",
-  "description": "Gestión de Servicios y Agenda Móvil de SPLASH",
+  "name": "SUMAQ Agenda Móvil",
+  "short_name": "SUMAQ Agenda",
+  "description": "Gestión de Servicios y Agenda Móvil de SUMAQ",
   "start_url": "./",
   "display": "standalone",
   "orientation": "portrait",
@@ -20,4 +20,3 @@
     }
   ]
 }
-

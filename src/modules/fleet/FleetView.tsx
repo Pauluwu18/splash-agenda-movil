@@ -15,7 +15,7 @@ export const FleetView: React.FC = () => {
             <Truck className="w-4 h-4 text-[#00CED1]" />
             <span>Gestión de Flota & Vans</span>
           </h2>
-          <p className="text-[10px] text-[#8A9BB0]">Vehículos de Operación SPLASH</p>
+          <p className="text-[10px] text-[#8A9BB0]">Vehículos de Operación SUMAQ</p>
         </div>
       </div>
 

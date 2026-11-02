@@ -35,7 +35,7 @@ export const EditServiceModal: React.FC<EditServiceModalProps> = ({
   const [vans, setVans] = useState<Vehiculo[]>(() => getVansPersonalizadas());
   const [vehiculoId, setVehiculoId] = useState<string>(servicio.vehiculo_id || '');
   
-  // Regla original de SPLASH para rectificación
+  // Regla original de SUMAQ para rectificación
   const [esRectificacion, setEsRectificacion] = useState<boolean>(Boolean(servicio.es_rectificacion));
   const [guardando, setGuardando] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
@@ -119,7 +119,7 @@ export const EditServiceModal: React.FC<EditServiceModalProps> = ({
             </div>
           )}
 
-          {/* Opción de Rectificación (Original de SPLASH) */}
+          {/* Opción de Rectificación (Original de SUMAQ) */}
           <div className="bg-[#111418] p-3 rounded-xl border border-[#252D38] space-y-2">
             <label className="flex items-center justify-between text-xs font-bold text-[#F0F4F8] cursor-pointer">
               <span>¿Es una Rectificación (Garantía)?</span>

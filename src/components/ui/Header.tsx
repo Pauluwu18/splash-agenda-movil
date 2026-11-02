@@ -93,7 +93,7 @@ export const Header: React.FC<HeaderProps> = ({
               alt="SUMAQ" 
               className="h-7 sm:h-8 w-auto object-contain cursor-pointer drop-shadow-xs"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = '/splash-agenda-movil/logo-sumaq.png';
+                (e.target as HTMLImageElement).src = './logo-sumaq.png';
               }}
               onClick={() => setMenuOpen(!menuOpen)}
             />

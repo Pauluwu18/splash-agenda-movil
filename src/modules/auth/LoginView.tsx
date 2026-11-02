@@ -58,7 +58,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             alt="SUMAQ" 
             className="h-16 sm:h-20 w-auto object-contain drop-shadow-xs"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = '/splash-agenda-movil/logo-sumaq.png';
+              (e.target as HTMLImageElement).src = './logo-sumaq.png';
             }}
           />
           <p className="text-[11px] text-slate-500 font-semibold tracking-wide text-center mt-3">

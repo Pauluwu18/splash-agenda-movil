@@ -6,8 +6,8 @@ export const REPO_DEFAULT_OPS_KEY = 'sb_publishable_0jQCEYJ-jUqdhnehK7X3ig_bIgiO
 export const getOperatorsSupabaseConfig = () => {
   const envUrl = import.meta.env.VITE_SUPABASE_OPERATORS_URL;
   const envKey = import.meta.env.VITE_SUPABASE_OPERATORS_ANON_KEY;
-  const localUrl = localStorage.getItem('splash_supa_ops_url');
-  const localKey = localStorage.getItem('splash_supa_ops_key');
+  const localUrl = localStorage.getItem('sumaq_supa_ops_url');
+  const localKey = localStorage.getItem('sumaq_supa_ops_key');
 
   const isInvalidCachedKey = localKey && (localKey.includes('juqdhneh') || localKey.includes('bIgioChy'));
   const effectiveLocalKey = isInvalidCachedKey ? '' : localKey;

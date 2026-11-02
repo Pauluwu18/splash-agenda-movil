@@ -60,7 +60,7 @@ export const SettingsView: React.FC = () => {
                 <Cloud className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="font-extrabold text-xs text-[#F0F4F8]">SPLASH Cloud (Supabase)</h3>
+                <h3 className="font-extrabold text-xs text-[#F0F4F8]">SUMAQ Cloud (Supabase)</h3>
                 <p className="text-[10px] text-[#8A9BB0] font-mono">
                   {mainConfig.url.replace('https://', '') || 'Conectado'}
                 </p>
@@ -121,7 +121,7 @@ export const SettingsView: React.FC = () => {
         {/* 3. INFORMACIÓN DE LA APLICACIÓN */}
         <div className="bg-[#181D22] p-4 rounded-2xl border border-[#252D38] space-y-2 text-[11px] text-[#8A9BB0]">
           <div className="flex items-center justify-between">
-            <span className="font-bold text-[#F0F4F8]">SPLASH Agenda Mobile</span>
+            <span className="font-bold text-[#F0F4F8]">SUMAQ Agenda Mobile</span>
             <span className="text-[10px] font-mono text-[#00CED1]">v1.2.0</span>
           </div>
           <p>
