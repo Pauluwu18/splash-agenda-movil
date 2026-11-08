@@ -107,7 +107,7 @@ export const PeopleView: React.FC = () => {
     setTelefono(op.telefono || '');
     setRol(op.rol || 'Operario');
     setSucursal(op.sucursal || 'Santa Anita');
-    setSueldo(String(op.sueldo_por_servicio || 25));
+    setSueldo(String(op.sueldo_por_servicio !== undefined ? op.sueldo_por_servicio : 25));
     setEnCapacitacion(Boolean(op.en_capacitacion));
     setColor(op.color || '#00CED1');
     setMostrarModal(true);

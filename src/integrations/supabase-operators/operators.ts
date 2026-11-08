@@ -1,5 +1,5 @@
 import { Operario } from '../../types';
-import { getOperatorsSupabase, isOperatorsSupabaseConfigured } from './client';
+import { getOperatorsSupabase } from './client';
 
 const DEFAULT_OPERARIOS: Operario[] = [];
 
@@ -9,6 +9,98 @@ const MOCK_IDS = [
   'b7d22305-0d97-40a8-b3ff-6d4c78ec62db',
   'cbf6fe50-6902-4c40-8edf-bfbb9358adeb'
 ];
+
+interface OperarioMetadata {
+  dni?: string;
+  nombres?: string;
+  apellidos?: string;
+  sueldo?: number;
+  enCapacitacion?: boolean;
+  sucursal?: string;
+}
+
+const getStoredMeta = (idOrPhone: string): OperarioMetadata | null => {
+  try {
+    const raw = localStorage.getItem('sumaq_operators_meta');
+    if (!raw) return null;
+    const map = JSON.parse(raw);
+    return map[idOrPhone] || null;
+  } catch {
+    return null;
+  }
+};
+
+const saveStoredMeta = (id: string, phone: string, meta: OperarioMetadata) => {
+  try {
+    const raw = localStorage.getItem('sumaq_operators_meta');
+    const map = raw ? JSON.parse(raw) : {};
+    if (id) map[id] = meta;
+    if (phone) map[phone] = meta;
+    localStorage.setItem('sumaq_operators_meta', JSON.stringify(map));
+  } catch {}
+};
+
+// Codificación de metadatos en la columna 'cargo' de Supabase (DNI, sueldo, capacitación, sucursal, apellidos)
+export const encodeOperarioCargo = (
+  rol: string = 'Operario',
+  meta: {
+    dni?: string;
+    sueldo?: number;
+    enCapacitacion?: boolean;
+    sucursal?: string;
+    apellidos?: string;
+    nombres?: string;
+  } = {}
+): string => {
+  const cleanRol = (rol || 'Operario').replace(/\[[^\]]+\]/g, '').trim() || 'Operario';
+  const tags: string[] = [];
+  if (meta.dni && meta.dni.trim()) tags.push(`[DNI:${meta.dni.trim()}]`);
+  if (meta.sueldo !== undefined && !isNaN(meta.sueldo)) tags.push(`[SUE:${meta.sueldo}]`);
+  if (meta.enCapacitacion) tags.push(`[CAP:1]`);
+  if (meta.sucursal && meta.sucursal.trim()) tags.push(`[SUC:${meta.sucursal.trim()}]`);
+  if (meta.apellidos && meta.apellidos.trim()) tags.push(`[APE:${meta.apellidos.trim()}]`);
+  if (meta.nombres && meta.nombres.trim()) tags.push(`[NOM:${meta.nombres.trim()}]`);
+
+  return tags.length > 0 ? `${cleanRol} ${tags.join('')}` : cleanRol;
+};
+
+export const decodeOperarioCargo = (cargo: string = '', nombreCompleto: string = '') => {
+  const rawCargo = cargo || '';
+  const dniMatch = rawCargo.match(/\[DNI:([^\]]+)\]/);
+  const sueMatch = rawCargo.match(/\[SUE:([^\]]+)\]/);
+  const capMatch = rawCargo.match(/\[CAP:([^\]]+)\]/);
+  const sucMatch = rawCargo.match(/\[SUC:([^\]]+)\]/);
+  const apeMatch = rawCargo.match(/\[APE:([^\]]+)\]/);
+  const nomMatch = rawCargo.match(/\[NOM:([^\]]+)\]/);
+
+  const cleanRol = rawCargo.replace(/\[[^\]]+\]/g, '').trim() || 'Operario';
+  const dni = dniMatch ? dniMatch[1].trim() : '';
+  const sueldo = sueMatch ? Number(sueMatch[1]) : 25;
+  const enCapacitacion = capMatch ? capMatch[1] === '1' : false;
+  const sucursal = sucMatch ? sucMatch[1].trim() : 'Santa Anita';
+
+  let apellidos = apeMatch ? apeMatch[1].trim() : '';
+  let nombres = nomMatch ? nomMatch[1].trim() : '';
+
+  if (!nombres && !apellidos) {
+    const rawClean = (nombreCompleto || '').trim();
+    const parts = rawClean.split(' ');
+    nombres = parts[0] || '';
+    apellidos = parts.slice(1).join(' ') || '';
+  } else if (!nombres && apellidos) {
+    nombres = (nombreCompleto || '').replace(apellidos, '').trim();
+  }
+
+  return {
+    rol: cleanRol,
+    dni,
+    sueldo,
+    enCapacitacion,
+    sucursal,
+    nombres,
+    apellidos
+  };
+};
 
 const getLocalOperators = (): Operario[] => {
   try {
@@ -45,22 +137,38 @@ export const fetchOperarios = async (): Promise<Operario[]> => {
       if (!error && data) {
         const mapped: Operario[] = data.map((d: any) => {
           const rawName = (d.nombre || '').trim();
-          const parts = rawName.split(' ');
-          const nombres = d.nombres || parts[0] || '';
-          const apellidos = d.apellidos || parts.slice(1).join(' ') || '';
+          const decoded = decodeOperarioCargo(d.cargo, rawName);
+          const cached = getStoredMeta(d.id) || getStoredMeta(d.telefono) || {};
+
+          const dni = decoded.dni || cached.dni || d.dni || '';
+          const sueldo = decoded.sueldo !== 25 ? decoded.sueldo : (cached.sueldo ?? 25);
+          const enCapacitacion = decoded.enCapacitacion || Boolean(cached.enCapacitacion);
+          const sucursal = decoded.sucursal !== 'Santa Anita' ? decoded.sucursal : (cached.sucursal || 'Santa Anita');
+          const nombres = decoded.nombres || cached.nombres || d.nombres || rawName.split(' ')[0] || '';
+          const apellidos = decoded.apellidos || cached.apellidos || d.apellidos || rawName.split(' ').slice(1).join(' ') || '';
+
+          // Persistir en cache local para acceso rápido
+          saveStoredMeta(d.id, d.telefono, {
+            dni,
+            nombres,
+            apellidos,
+            sueldo,
+            enCapacitacion,
+            sucursal
+          });
 
           return {
             id: d.id,
-            dni: d.dni || '',
+            dni,
             nombres,
             apellidos,
             nombre_completo: rawName || `${nombres} ${apellidos}`.trim(),
             telefono: d.telefono || '',
-            rol: d.cargo || d.rol || 'Operario',
-            sucursal: d.sucursal || 'Santa Anita',
+            rol: decoded.rol || 'Operario',
+            sucursal,
             estado: d.activo ? 'ACTIVO' : 'INACTIVO',
-            sueldo_por_servicio: Number(d.sueldo_por_servicio) || 25,
-            en_capacitacion: Boolean(d.en_capacitacion),
+            sueldo_por_servicio: sueldo,
+            en_capacitacion: enCapacitacion,
             color: d.color || '#00CED1'
           };
         });
@@ -83,18 +191,53 @@ export const fetchOperariosActivos = async (): Promise<Operario[]> => {
 
 export const saveOperario = async (operario: Partial<Operario>): Promise<Operario> => {
   const supa = getOperatorsSupabase();
+  const nombres = (operario.nombres || '').trim();
+  const apellidos = (operario.apellidos || '').trim();
   const nombreCompleto = (
     operario.nombre_completo || 
-    `${operario.nombres || ''} ${operario.apellidos || ''}`
+    `${nombres} ${apellidos}`
   ).trim();
 
-  // Columnas exactas de la tabla operarios en Supabase
+  const dni = (operario.dni || '').trim();
+  const sueldo = operario.sueldo_por_servicio !== undefined ? Number(operario.sueldo_por_servicio) : 25;
+  const enCap = Boolean(operario.en_capacitacion);
+  const sucursal = operario.sucursal || 'Santa Anita';
+  const rol = operario.rol || 'Operario';
+  const telefono = (operario.telefono || '').trim();
+  const color = operario.color || '#00CED1';
+  const estado = operario.estado !== 'INACTIVO' ? 'ACTIVO' : 'INACTIVO';
+
+  // Codificar metadatos en cargo para persistir 100% en Supabase sin pérdida
+  const cargoEncoded = encodeOperarioCargo(rol, {
+    dni,
+    sueldo,
+    enCapacitacion: enCap,
+    sucursal,
+    apellidos,
+    nombres
+  });
+
   const dbPayload = {
     nombre: nombreCompleto,
-    telefono: operario.telefono || '',
-    cargo: operario.rol || 'Operario',
-    color: operario.color || '#00CED1',
-    activo: operario.estado !== 'INACTIVO'
+    telefono,
+    cargo: cargoEncoded,
+    color,
+    activo: estado === 'ACTIVO'
+  };
+
+  let savedOperario: Operario = {
+    id: operario.id || `op-${Date.now()}`,
+    dni,
+    nombres,
+    apellidos,
+    nombre_completo: nombreCompleto,
+    telefono,
+    rol,
+    sucursal,
+    estado,
+    sueldo_por_servicio: sueldo,
+    en_capacitacion: enCap,
+    color
   };
 
   if (supa) {
@@ -107,21 +250,9 @@ export const saveOperario = async (operario: Partial<Operario>): Promise<Operari
           .select()
           .single();
         if (!error && data) {
-          await fetchOperarios();
-          return {
-            id: data.id,
-            dni: operario.dni || '',
-            nombres: operario.nombres || '',
-            apellidos: operario.apellidos || '',
-            nombre_completo: data.nombre,
-            telefono: data.telefono,
-            rol: data.cargo,
-            sucursal: 'Santa Anita',
-            estado: data.activo ? 'ACTIVO' : 'INACTIVO',
-            sueldo_por_servicio: operario.sueldo_por_servicio || 25,
-            en_capacitacion: false,
-            color: data.color
-          };
+          savedOperario.id = data.id;
+        } else if (error) {
+          console.warn('Error al actualizar operario en Supabase:', error);
         }
       } else {
         const { data, error } = await supa
@@ -130,21 +261,9 @@ export const saveOperario = async (operario: Partial<Operario>): Promise<Operari
           .select()
           .single();
         if (!error && data) {
-          await fetchOperarios();
-          return {
-            id: data.id,
-            dni: operario.dni || '',
-            nombres: operario.nombres || '',
-            apellidos: operario.apellidos || '',
-            nombre_completo: data.nombre,
-            telefono: data.telefono,
-            rol: data.cargo,
-            sucursal: 'Santa Anita',
-            estado: data.activo ? 'ACTIVO' : 'INACTIVO',
-            sueldo_por_servicio: operario.sueldo_por_servicio || 25,
-            en_capacitacion: false,
-            color: data.color
-          };
+          savedOperario.id = data.id;
+        } else if (error) {
+          console.warn('Error al insertar operario en Supabase:', error);
         }
       }
     } catch (e) {
@@ -152,36 +271,27 @@ export const saveOperario = async (operario: Partial<Operario>): Promise<Operari
     }
   }
 
-  // Fallback Local
+  // Guardar en cache de metadatos
+  saveStoredMeta(savedOperario.id, savedOperario.telefono || '', {
+    dni,
+    nombres,
+    apellidos,
+    sueldo,
+    enCapacitacion: enCap,
+    sucursal
+  });
+
+  // Actualizar lista local
   const list = getLocalOperators();
-  let saved: Operario;
-  if (operario.id) {
-    const idx = list.findIndex(o => o.id === operario.id);
-    if (idx >= 0) {
-      list[idx] = { ...list[idx], ...(operario as Operario) };
-      saved = list[idx];
-    } else {
-      saved = { ...(operario as Operario), id: operario.id };
-      list.push(saved);
-    }
+  const idx = list.findIndex(o => o.id === savedOperario.id || (o.telefono && o.telefono === savedOperario.telefono));
+  if (idx >= 0) {
+    list[idx] = savedOperario;
   } else {
-    saved = {
-      id: `op-${Date.now()}`,
-      nombres: operario.nombres || '',
-      apellidos: operario.apellidos || '',
-      nombre_completo: nombreCompleto,
-      telefono: operario.telefono || '',
-      rol: operario.rol || 'Operario',
-      sucursal: operario.sucursal || 'Santa Anita',
-      estado: operario.estado || 'ACTIVO',
-      sueldo_por_servicio: operario.sueldo_por_servicio || 25,
-      en_capacitacion: Boolean(operario.en_capacitacion),
-      color: operario.color || '#00CED1'
-    };
-    list.push(saved);
+    list.push(savedOperario);
   }
   setLocalOperators(list);
-  return saved;
+
+  return savedOperario;
 };
 
 export const saveOperarioToSupabase = saveOperario;
