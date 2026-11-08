@@ -157,7 +157,7 @@ export const AgendaTableRow: React.FC<AgendaTableRowProps> = ({
                 {servicio.cliente_nombre}
               </span>
               <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-[#1E2530] text-[#8A9BB0] border border-[#2E3847]">
-                {servicio.sucursal_nombre || 'SUCURSAL LAS FLORES'}
+                {servicio.sucursal_nombre || 'SUCURSAL SANTA ANITA'}
               </span>
               <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-[#00CED1]/15 text-[#00CED1] border border-[#00CED1]/30">
                 {servicio.empresa_nombre || 'SUMAQ'}

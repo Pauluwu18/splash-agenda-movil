@@ -53,7 +53,7 @@ export const FleetView: React.FC = () => {
                       {v.placa}
                     </span>
                     <span>•</span>
-                    <span>{v.sucursal_nombre || 'Sede Las Flores'}</span>
+                    <span>{v.sucursal_nombre || 'Sucursal Santa Anita'}</span>
                   </div>
                 </div>
               </div>

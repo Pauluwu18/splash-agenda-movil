@@ -38,7 +38,7 @@ export const PeopleView: React.FC = () => {
   const [dni, setDni] = useState<string>('');
   const [telefono, setTelefono] = useState<string>('');
   const [rol, setRol] = useState<string>('Operario');
-  const [sucursal, setSucursal] = useState<string>('Las Flores');
+  const [sucursal, setSucursal] = useState<string>('Santa Anita');
   const [sueldo, setSueldo] = useState<string>('25');
   const [enCapacitacion, setEnCapacitacion] = useState<boolean>(false);
   const [color, setColor] = useState<string>('#00CED1');
@@ -92,7 +92,7 @@ export const PeopleView: React.FC = () => {
     setDni('');
     setTelefono('');
     setRol('Operario');
-    setSucursal('Las Flores');
+    setSucursal('Santa Anita');
     setSueldo('25');
     setEnCapacitacion(false);
     setColor('#00CED1');
@@ -106,7 +106,7 @@ export const PeopleView: React.FC = () => {
     setDni(op.dni || '');
     setTelefono(op.telefono || '');
     setRol(op.rol || 'Operario');
-    setSucursal(op.sucursal || 'Las Flores');
+    setSucursal(op.sucursal || 'Santa Anita');
     setSueldo(String(op.sueldo_por_servicio || 25));
     setEnCapacitacion(Boolean(op.en_capacitacion));
     setColor(op.color || '#00CED1');
@@ -413,7 +413,7 @@ export const PeopleView: React.FC = () => {
                       <div className="flex items-center gap-2 text-xs text-[#8A9BB0] flex-wrap">
                         <span className="font-bold text-[#00CED1]">{p.rol || 'Operario'}</span>
                         <span>•</span>
-                        <span>{p.sucursal || 'Las Flores'}</span>
+                        <span>{p.sucursal || 'Santa Anita'}</span>
                         {p.dni && (
                           <>
                             <span>•</span>
@@ -716,7 +716,7 @@ export const PeopleView: React.FC = () => {
                     onChange={(e) => setSucursal(e.target.value)}
                     className="w-full px-2.5 py-2 text-xs font-bold bg-[#111418] border border-[#2E3847] rounded-xl text-[#F0F4F8] focus:outline-none"
                   >
-                    <option value="Las Flores">Las Flores</option>
+                    <option value="Santa Anita">Santa Anita</option>
                     <option value="Surco">Surco</option>
                     <option value="Miraflores">Miraflores</option>
                     <option value="San Isidro">San Isidro</option>
